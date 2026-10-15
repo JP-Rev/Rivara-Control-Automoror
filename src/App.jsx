@@ -62,7 +62,7 @@ function App() {
   const [nuevo, setNuevo] = useState(null)        // { dominio }
   const [detalle, setDetalle] = useState(null)    // id
   const [ddjj, setDdjj] = useState(null)          // tramite
-  const [vehiculo, setVehiculo] = useState(null)  // objeto o 'nuevo'
+  const [vehiculo, setVehiculo] = useState(null)  // objeto, o { nuevo: true, dominio? }
   // Sube cuando algo de afuera cambia el tramite abierto (la DDJJ, los datos
   // del vehiculo): el detalle se vuelve a montar y relee todo.
   const [versionDetalle, setVersionDetalle] = useState(0)
@@ -74,6 +74,16 @@ function App() {
   const cargarTramites = useCallback(async () => {
     try {
       setTramites((await api.tramites()).tramites)
+    } catch (e) {
+      if (e.status !== 401) setError(e.message)
+    }
+  }, [])
+
+  // El catalogo trae las listas de marcas, usos, titulares... que incluyen lo
+  // ya cargado en la flota: se relee al guardar un vehiculo.
+  const cargarCatalogo = useCallback(async () => {
+    try {
+      setCatalogo(await api.catalogo())
     } catch (e) {
       if (e.status !== 401) setError(e.message)
     }
@@ -95,11 +105,7 @@ function App() {
     if (!usuario) return
     let vigente = true
     ;(async () => {
-      try {
-        setCatalogo(await api.catalogo())
-      } catch (e) {
-        setError(e.message)
-      }
+      await cargarCatalogo()
       await Promise.all([cargarTramites(), cargarVehiculos()])
       setLeyendo(true)
       try {
@@ -114,7 +120,7 @@ function App() {
       }
     })()
     return () => { vigente = false }
-  }, [usuario, cargarTramites, cargarVehiculos])
+  }, [usuario, cargarTramites, cargarVehiculos, cargarCatalogo])
 
   useEffect(() => {
     if (!usuario) return
@@ -325,7 +331,7 @@ function App() {
               )}
               {vista === 'flota' && (
                 <Flota vehiculos={vehiculos} sincronizacion={sincronizacion} catalogo={catalogo} usuario={usuario}
-                       onAbrir={setVehiculo} onNuevo={() => setVehiculo('nuevo')} onLeer={leerAhora} leyendo={leyendo} />
+                       onAbrir={setVehiculo} onNuevo={() => setVehiculo({ nuevo: true })} onLeer={leerAhora} leyendo={leyendo} />
               )}
               {vista === 'usuarios' && usuario.esAdmin && <Usuarios usuario={usuario} />}
               {vista === 'password' && <Password onCerrar={() => setVista('bandeja')} />}
@@ -346,6 +352,7 @@ function App() {
       {nuevo && catalogo && (
         <NuevoTramite catalogo={catalogo} vehiculos={vehiculos} tramites={tramites || []} dominioInicial={nuevo.dominio}
                       onAbrir={(id) => { setNuevo(null); setDetalle(id) }}
+                      onAgregarVehiculo={usuario.esGestor ? (dominio) => setVehiculo({ nuevo: true, dominio }) : undefined}
                       onCerrar={() => setNuevo(null)}
                       onCreado={(t) => { actualizarTramite(t); setNuevo(null); setVista('bandeja'); setDetalle(t.id) }} />
       )}
@@ -358,9 +365,9 @@ function App() {
                         onDdjj={(t) => setDdjj(t)} />
       )}
       {vehiculo && catalogo && (
-        <Vehiculo key={vehiculo === 'nuevo' ? 'nuevo' : vehiculo.id} vehiculo={vehiculo === 'nuevo' ? null : vehiculo}
+        <Vehiculo key={vehiculo.nuevo ? 'nuevo' : vehiculo.id} vehiculo={vehiculo}
                   catalogo={catalogo} usuario={usuario} tramites={tramites || []}
-                  onGuardado={() => { cargarVehiculos(); cargarTramites(); vehiculoCambio.current = true }}
+                  onGuardado={() => { cargarVehiculos(); cargarTramites(); cargarCatalogo(); vehiculoCambio.current = true }}
                   onNuevoTramite={(dominio) => { setVehiculo(null); setNuevo({ dominio }) }}
                   onAbrirTramite={(id) => { setVehiculo(null); setDetalle(id) }}
                   onCerrar={() => {

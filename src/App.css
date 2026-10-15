@@ -941,3 +941,6 @@ label.corregido > span small { color: #7a4a06; font-weight: 600; }
 .selector-vacio { padding: 10px 12px; font-size: 13px; font-weight: 400; color: var(--rv-texto-3); }
 .ayuda-campo { font-size: 12.5px; font-weight: 400; color: var(--rv-texto-3); }
 .nota .mini-lista { margin-top: 8px; }
+
+/* La X propia del buscador ya borra: la del navegador quedaba duplicada. */
+input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }

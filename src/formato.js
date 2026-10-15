@@ -63,10 +63,3 @@ export function marcaYModeloSugeridos(v) {
   const modelo = [...resto, v.modelo && v.modelo !== v.marca ? v.modelo : ''].join(' ').replace(/\s+/g, ' ').trim().toUpperCase()
   return { marca, modelo }
 }
-
-export const TIPOS_REGISTRALES = [
-  'PICK UP', 'PICK-UP CABINA DOBLE', 'SEDAN 4 PUERTAS', 'RURAL 5 PUERTAS', 'UTILITARIO',
-  'CAMION', 'TRACTOR DE CARRETERA', 'CHASIS CON CABINA', 'SEMIRREMOLQUE', 'ACOPLADO',
-]
-
-export const USOS = ['PRIVADO', 'PÚBLICO', 'OFICIAL']

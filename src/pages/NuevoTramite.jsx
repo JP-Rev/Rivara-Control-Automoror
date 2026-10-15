@@ -9,7 +9,7 @@ import Selector from '../componentes/Selector.jsx'
 // lo completa quien lo gestiona. Los dos campos se buscan escribiendo: el
 // dominio por patente, chofer, unidad o marca; el tramite por como lo dice la
 // gente ("chapa", "cédula verde", "08").
-export default function NuevoTramite({ catalogo, vehiculos, tramites = [], dominioInicial = '', onCreado, onAbrir, onCerrar }) {
+export default function NuevoTramite({ catalogo, vehiculos, tramites = [], dominioInicial = '', onCreado, onAbrir, onAgregarVehiculo, onCerrar }) {
   const [dominio, setDominio] = useState(dominioInicial)
   // Reposicion de placas por defecto: es, por lejos, el que mas se carga.
   const [tipo, setTipo] = useState('REPOSICION_PLACAS')
@@ -29,7 +29,7 @@ export default function NuevoTramite({ catalogo, vehiculos, tramites = [], domin
   async function enviar(e) {
     e.preventDefault()
     setError('')
-    if (!dominio) return setError('Ingresá un dominio válido o elegilo de la lista.')
+    if (!dominio) return setError('Elegí el vehículo de la lista de la flota.')
     if (!tipo) return setError('Elegí qué trámite hay que hacer.')
     setEnviando(true)
     try {
@@ -46,7 +46,8 @@ export default function NuevoTramite({ catalogo, vehiculos, tramites = [], domin
       <form className="forma" onSubmit={enviar}>
         <label>
           Dominio
-          <DominioInput valor={dominioInicial} onCambio={setDominio} vehiculos={vehiculos} autoFocus={!dominioInicial} />
+          <DominioInput valor={dominioInicial} onCambio={setDominio} vehiculos={vehiculos} autoFocus={!dominioInicial}
+                        onAgregar={onAgregarVehiculo} />
         </label>
 
         {abiertos.length > 0 && (

@@ -28,7 +28,8 @@ test('camiones: tractor, tolva y dominio adicional son vehiculos distintos', () 
   const { registros, avisos } = leerPlanilla(buffer, { archivo: 'Control Camiones.xlsx', categoria: 'CAMION' })
   const por = Object.fromEntries(registros.map((r) => [r.dominio, r]))
   assert.equal(por.AA870NO.rol, 'Tractor')
-  assert.equal(por.AA870NO.marca, 'Iveco 280 Tector')
+  assert.equal(por.AA870NO.marca, 'Iveco')
+  assert.equal(por.AA870NO.modelo, '280 Tector')
   assert.equal(por.AA870NO.anio, null) // "6" no es un año
   assert.equal(por.AA870NO.estado, '') // #REF! no es un dato
   assert.equal(por.AE477RA.categoria, 'ACOPLADO')
@@ -62,4 +63,20 @@ test('camionetas: encabezados por sinonimo, cualquier hoja, la primera manda', (
   assert.equal(por.AE622BG.configuracion, 'C/D 4x4')
   assert.equal(por.AE622BG.unidad, '2')
   assert.equal(por.AD376JU.categoria, 'CAMIONETA')
+})
+
+test('marca y modelo: se separan como los escribe la planilla', async () => {
+  const { partirMarcaModelo } = await import('../src/marcas.js')
+  assert.deepEqual(partirMarcaModelo('Toyota Hilux', 'DX Pack 2.5'), { marca: 'Toyota', modelo: 'Hilux DX Pack 2.5' })
+  assert.deepEqual(partirMarcaModelo('VW Amarok ', 'TDI 140cv'), { marca: 'Volkswagen', modelo: 'Amarok TDI 140cv' })
+  assert.deepEqual(partirMarcaModelo('Iveco 280 Tector', ''), { marca: 'Iveco', modelo: '280 Tector' })
+  assert.deepEqual(partirMarcaModelo('Corolla XLI 1.8 CVT', 'Corolla XLI 1.8 CVT'), { marca: 'Toyota', modelo: 'Corolla XLI 1.8 CVT' })
+  assert.deepEqual(partirMarcaModelo('Toyota Hilux', 'L/21 2.4 DC TDI DX'), { marca: 'Toyota', modelo: 'Hilux L/21 2.4 DC TDI DX' })
+  assert.deepEqual(partirMarcaModelo('Marca Rara X', 'Y'), { marca: 'Marca Rara X', modelo: 'Y' })
+})
+
+test('marca y modelo: no repite el modelo si la columna ya lo nombra', async () => {
+  const { partirMarcaModelo } = await import('../src/marcas.js')
+  assert.equal(partirMarcaModelo('VW Amarok', 'A2-Amarok comf V6 AT').modelo, 'A2-Amarok comf V6 AT')
+  assert.equal(partirMarcaModelo('VW Saveiro', '307-Saveiro 1.6').modelo, '307-Saveiro 1.6')
 })

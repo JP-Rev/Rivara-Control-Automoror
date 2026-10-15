@@ -63,10 +63,13 @@ function aplicar(fuente, registros) {
   const buscar = db.prepare('SELECT * FROM vehiculos WHERE dominio = ?')
   const insertar = db.prepare(`
     INSERT INTO vehiculos (dominio, categoria, unidad, rol, marca, modelo, configuracion, anio,
-      chofer, estado, titular, localidad, sector, fuente, origen, en_planilla, sincronizado_en)
+      chofer, estado, titular, localidad, sector, marca_chasis, fuente, origen, en_planilla, sincronizado_en)
     VALUES (@dominio, @categoria, @unidad, @rol, @marca, @modelo, @configuracion, @anio,
-      @chofer, @estado, @titular, @localidad, @sector, @fuente, @origen, 1, @ahora)
+      @chofer, @estado, @titular, @localidad, @sector, @marcaChasis, @fuente, @origen, 1, @ahora)
   `)
+  // La marca de chasis es un dato registral (se carga a mano), pero la marca
+  // de la planilla la da: se completa solo si esta vacia, nunca se pisa.
+  const marcaChasis = (reg) => (reg.marca && reg.categoria !== 'ACOPLADO' ? reg.marca.toUpperCase() : '')
   let nuevos = 0
   let actualizados = 0
   const marca = ahora()
@@ -75,7 +78,7 @@ function aplicar(fuente, registros) {
     for (const reg of registros) {
       const previo = buscar.get(reg.dominio)
       if (!previo) {
-        insertar.run({ ...reg, fuente: fuente.id, ahora: marca })
+        insertar.run({ ...reg, marcaChasis: marcaChasis(reg), fuente: fuente.id, ahora: marca })
         nuevos++
         continue
       }
@@ -86,8 +89,15 @@ function aplicar(fuente, registros) {
         if (manuales.has(campo)) continue
         const valor = reg[campo]
         if (valor === '' || valor == null) continue // celda vacia no borra
+        // Marca y modelo solo se completan si estan vacios: un modelo que ya
+        // tiene el vehiculo no se reemplaza (pedido explicito). La unica
+        // excepcion es lo que la propia app guardo con el formato anterior,
+        // que era copia literal de las columnas de la planilla.
+        if ((campo === 'marca' || campo === 'modelo') && previo[campo] && !formatoViejo(previo, reg)) continue
         if (String(previo[campo] ?? '') !== String(valor)) cambios[campo] = valor
       }
+
+      if (!previo.marca_chasis && marcaChasis(reg)) cambios.marca_chasis = marcaChasis(reg)
 
       const sets = Object.keys(cambios).map((k) => `${k} = @${k}`)
       // Un vehiculo cargado a mano que aparece en la planilla pasa a ser de
@@ -112,6 +122,14 @@ function aplicar(fuente, registros) {
 
   return { nuevos, actualizados }
 }
+
+// El vehiculo tiene marca y modelo tal cual las columnas de la planilla
+// ("Toyota Hilux" / "DX Pack 2.5"): es lo que guardaba la version anterior,
+// no un dato que alguien eligio.
+const formatoViejo = (previo, reg) =>
+  Boolean(reg.marcaCruda) &&
+  String(previo.marca || '') === reg.marcaCruda &&
+  String(previo.modelo || '') === String(reg.modeloCrudo || '')
 
 async function sincronizarFuente(fuente, forzar) {
   const ruta = rutaDe(fuente)

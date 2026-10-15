@@ -6,7 +6,8 @@ import {
   requireAdmin, requireAuth, requireGestor, sesionOpcional, usuarioPublico, verificarPassword,
 } from './auth.js'
 import {
-  CAMPOS_REGISTRALES, CATEGORIAS, ESTADOS, MOTIVOS, TIPOS, claves, tipoDe,
+  CAMPOS_REGISTRALES, CATEGORIAS, ESTADOS, MARCAS, MARCAS_MOTOR, MOTIVOS, ROLES, TIPOS, TIPOS_REGISTRALES, USOS,
+  claves, tipoDe,
 } from './catalogo.js'
 import { dominioValido, normalizarDominio } from './dominio.js'
 import { DOCUMENTOS_DDJJ, generarDDJJ } from './ddjj.js'
@@ -76,8 +77,39 @@ api.post('/auth/password', requireAuth, (req, res) => {
 
 api.use(requireAuth)
 
+// Lista base + lo que ya se cargo en la flota, sin repetir (sin distinguir
+// mayusculas ni tildes) y en orden alfabetico salvo la base, que va primero.
+function lista(base, ...columnas) {
+  const vistos = new Set()
+  const clave = (v) => v.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim()
+  const salida = []
+  const agregar = (v) => {
+    const t = String(v || '').trim()
+    if (!t || vistos.has(clave(t))) return
+    vistos.add(clave(t))
+    salida.push(t)
+  }
+  base.forEach(agregar)
+  const extra = columnas.flatMap((c) =>
+    db.prepare(`SELECT DISTINCT ${c} AS v FROM vehiculos WHERE ${c} <> ''`).all().map((r) => r.v))
+  extra.sort((a, b) => a.localeCompare(b, 'es')).forEach(agregar)
+  return salida
+}
+
 api.get('/catalogo', (_req, res) => {
   res.json({
+    listas: {
+      marcas: lista(MARCAS, 'marca_chasis'),
+      marcasMotor: lista(MARCAS_MOTOR, 'marca_motor', 'marca_chasis'),
+      usos: lista(USOS, 'uso'),
+      tiposRegistrales: lista(TIPOS_REGISTRALES, 'tipo_registral'),
+      roles: lista(ROLES, 'rol'),
+      marcasPlanilla: lista([], 'marca'),
+      titulares: lista([], 'titular'),
+      localidades: lista([], 'localidad'),
+      sectores: lista([], 'sector'),
+      estadosFlota: lista([], 'estado'),
+    },
     tipos: TIPOS, motivos: MOTIVOS, estados: ESTADOS, categorias: CATEGORIAS,
     camposRegistrales: CAMPOS_REGISTRALES, documentosDdjj: DOCUMENTOS_DDJJ,
     ddjj: {
@@ -307,6 +339,8 @@ function cargarTramite(req, res) {
 // es de quien lo gestiona.
 const puedeEditar = (u, t) => esGestor(u) || (t.solicitante_id === u.id && !t.gestor_id && t.estado === 'SOLICITADO')
 
+const enFlota = (dominio) => Boolean(db.prepare('SELECT 1 FROM vehiculos WHERE dominio = ?').get(dominio))
+
 function validarTipoYMotivo(tipo, motivo, observaciones) {
   const def = tipoDe(tipo)
   if (!def) return 'Elegí qué trámite hay que hacer'
@@ -329,7 +363,10 @@ api.get('/tramites/:id', (req, res) => {
 
 api.post('/tramites', (req, res) => {
   const dominio = normalizarDominio(req.body?.dominio)
-  if (!dominioValido(dominio)) return res.status(400).json({ error: 'Ingresá un dominio válido (AA123BB o ABC123)' })
+  if (!dominioValido(dominio)) return res.status(400).json({ error: 'Elegí el dominio de la lista de la flota' })
+  // Solo dominios de la flota: un dominio mal tipeado generaba un tramite
+  // huerfano, sin vehiculo, que despues nadie encontraba.
+  if (!enFlota(dominio)) return res.status(400).json({ error: `${dominio} no está en la flota. Si es un vehículo nuevo, primero hay que agregarlo en Flota.` })
   const tipo = String(req.body?.tipo || '')
   const motivo = tipoDe(tipo)?.motivo ? String(req.body?.motivo || '') : ''
   const observaciones = textoLargo(req.body?.observaciones)
@@ -357,7 +394,10 @@ api.patch('/tramites/:id', (req, res) => {
     observaciones: req.body?.observaciones !== undefined ? textoLargo(req.body.observaciones) : t.observaciones,
     nro_registro: req.body?.nroRegistro !== undefined ? texto(req.body.nroRegistro, 60) : t.nro_registro,
   }
-  if (!dominioValido(nuevo.dominio)) return res.status(400).json({ error: 'Ingresá un dominio válido (AA123BB o ABC123)' })
+  if (!dominioValido(nuevo.dominio)) return res.status(400).json({ error: 'Elegí el dominio de la lista de la flota' })
+  if (nuevo.dominio !== t.dominio && !enFlota(nuevo.dominio)) {
+    return res.status(400).json({ error: `${nuevo.dominio} no está en la flota. Si es un vehículo nuevo, primero hay que agregarlo en Flota.` })
+  }
   if (!tipoDe(nuevo.tipo)?.motivo) nuevo.motivo = ''
   const error = validarTipoYMotivo(nuevo.tipo, nuevo.motivo, nuevo.observaciones)
   if (error) return res.status(400).json({ error })

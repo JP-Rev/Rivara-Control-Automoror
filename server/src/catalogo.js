@@ -74,3 +74,22 @@ export const CAMPOS_REGISTRALES = [
 
 export const claves = (lista) => lista.map((x) => x.clave)
 export const tipoDe = (clave) => TIPOS.find((t) => t.clave === clave)
+
+// Listas de los datos del vehiculo. Son sugerencias: el selector acepta un
+// valor nuevo, y una vez guardado aparece en la lista para todos (el endpoint
+// del catalogo suma los valores que ya hay en la flota).
+export const MARCAS = [
+  'VOLKSWAGEN', 'FORD', 'IVECO', 'TOYOTA', 'VOLVO', 'SCANIA', 'MERCEDES BENZ',
+  'FIAT', 'CHEVROLET', 'RENAULT', 'PEUGEOT', 'NISSAN',
+]
+// Los motores llevan a veces otra marca que el chasis (un Iveco con motor FPT).
+export const MARCAS_MOTOR = [...MARCAS, 'FPT', 'CUMMINS', 'MWM', 'DEUTZ']
+
+export const USOS = ['PRIVADO', 'PRIV. TRANSP. DE CARGA INTERJ.', 'PÚBLICO', 'OFICIAL']
+
+export const TIPOS_REGISTRALES = [
+  'PICK UP', 'PICK-UP CABINA DOBLE', 'SEDAN 4 PUERTAS', 'RURAL 5 PUERTAS', 'UTILITARIO',
+  'CAMION', 'TRACTOR DE CARRETERA', 'CHASIS CON CABINA', 'SEMIRREMOLQUE', 'ACOPLADO',
+]
+
+export const ROLES = ['Tractor', 'Tolva/Acoplado', 'Dominio adicional']

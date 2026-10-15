@@ -2,7 +2,7 @@ import { useState } from 'react'
 import * as api from '../api.js'
 import Modal from '../componentes/Modal.jsx'
 import Selector from '../componentes/Selector.jsx'
-import { TIPOS_REGISTRALES, hoyISO, marcaYModeloSugeridos } from '../formato.js'
+import { hoyISO, marcaYModeloSugeridos } from '../formato.js'
 import { Icono } from '../iconos.jsx'
 
 // Formulario de la DDJJ de extravio. Arranca con lo que la flota sabe del
@@ -104,6 +104,8 @@ export default function Ddjj({ tramite, catalogo, usuario, onListo, onCerrar }) 
     }
   }
 
+  const lista = (nombre) => (catalogo.listas?.[nombre] || []).map((v) => ({ clave: v, nombre: v }))
+
   const campoDato = (k, etiqueta, opciones = {}) => (
     <label className={`dato-ddjj dato-ddjj--${f[k].origen}`}>
       {etiqueta}
@@ -150,8 +152,8 @@ export default function Ddjj({ tramite, catalogo, usuario, onListo, onCerrar }) 
           <legend>Datos del automotor</legend>
           <p className="apagado">Dominio <b className="patente">{tramite.dominio}</b></p>
           <div className="forma-fila">
-            {campoDato('marca', 'Marca', { placeholder: 'VOLKSWAGEN' })}
-            {campoDato('tipo', 'Tipo', { sugerencias: TIPOS_REGISTRALES.map((t) => ({ clave: t, nombre: t })), placeholder: 'PICK UP' })}
+            {campoDato('marca', 'Marca', { sugerencias: lista('marcas'), placeholder: 'VOLKSWAGEN' })}
+            {campoDato('tipo', 'Tipo', { sugerencias: lista('tiposRegistrales'), placeholder: 'PICK UP' })}
           </div>
           <div className="forma-fila">
             {campoDato('modelo', 'Modelo', { placeholder: 'AMAROK TRENDLINE 4X4 2.0L TDI 140 CV' })}

@@ -1,5 +1,6 @@
 import XLSX from 'xlsx'
 import { extraerDominios } from './dominio.js'
+import { partirMarcaModelo } from './marcas.js'
 
 // Lectura de las planillas de flota.
 //
@@ -137,11 +138,14 @@ export function leerPlanilla(buffer, { archivo, categoria }) {
         localidad: texto(celda(r, 'localidad')),
         sector: texto(celda(r, 'sector')),
       }
-      const propio = {
-        marca: texto(celda(r, 'marca')),
-        modelo: texto(celda(r, 'modelo')),
-        configuracion: texto(celda(r, 'configuracion')),
-      }
+      // "Toyota Hilux" + "DX Pack 2.5" -> marca Toyota, modelo Hilux DX Pack 2.5
+      const marcaCruda = texto(celda(r, 'marca'))
+      const modeloCrudo = texto(celda(r, 'modelo'))
+      const { marca, modelo } = partirMarcaModelo(marcaCruda, modeloCrudo)
+      // Lo crudo viaja para reconocer lo que la app guardo con el formato
+      // anterior (marca "Toyota Hilux", modelo "DX Pack 2.5") y poder
+      // actualizarlo; ver sincronizar.js.
+      const propio = { marca, modelo, marcaCruda, modeloCrudo, configuracion: texto(celda(r, 'configuracion')) }
       const { anio, invalido: anioInvalido } = anioDe(celda(r, 'anio'))
 
       // Cada columna de dominio es un vehiculo distinto para el Registro.
@@ -163,7 +167,7 @@ export function leerPlanilla(buffer, { archivo, categoria }) {
           }
           encontrados.push({
             dominio, categoria: cat, rol, ...comun,
-            ...(datosPropios ? { ...propio, anio } : { marca: '', modelo: '', configuracion: '', anio: null }),
+            ...(datosPropios ? { ...propio, anio } : { marca: '', modelo: '', marcaCruda: '', modeloCrudo: '', configuracion: '', anio: null }),
             origen: donde,
           })
         })

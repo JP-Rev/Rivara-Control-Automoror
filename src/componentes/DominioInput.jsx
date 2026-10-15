@@ -1,4 +1,4 @@
-import { useId, useMemo, useState } from 'react'
+import { useEffect, useId, useMemo, useState } from 'react'
 import { coincide, compactar, parsearConsulta } from '../filtros.js'
 
 // Mismos formatos que el servidor (server/src/dominio.js).
@@ -17,9 +17,12 @@ export const resumenVehiculo = (v) =>
   [v.marca || v.rol, v.modelo, v.unidad && `unidad ${v.unidad}`, v.chofer].filter(Boolean).join(' · ')
 
 // Campo de dominio con sugerencias de la flota. Se puede escribir el dominio
-// directo o buscar por chofer, marca o numero de unidad ("24", "perez"), y
-// tambien cargar un dominio que no esta en la flota.
-export default function DominioInput({ valor, onCambio, vehiculos, autoFocus }) {
+// directo o buscar por chofer, marca o numero de unidad ("24", "perez").
+//
+// Solo acepta dominios de la flota: un dominio mal tipeado generaba un
+// tramite sin vehiculo que despues nadie encontraba. Si es un vehiculo nuevo,
+// `onAgregar` (solo para quien gestiona) ofrece darlo de alta en la flota.
+export default function DominioInput({ valor, onCambio, vehiculos, autoFocus, onAgregar }) {
   const [texto, setTexto] = useState(valor || '')
   const [abierto, setAbierto] = useState(false)
   const [activo, setActivo] = useState(0)
@@ -40,6 +43,11 @@ export default function DominioInput({ valor, onCambio, vehiculos, autoFocus }) 
 
   const dominio = normalizarDominio(texto)
   const exacto = (vehiculos || []).find((v) => v.dominio === dominio)
+
+  // Si el vehiculo se agrega a la flota con el campo ya escrito (desde
+  // "Agregarlo a la flota"), queda elegido sin tener que volver a tipearlo.
+  const enFlota = Boolean(exacto)
+  useEffect(() => { if (enFlota) onCambio(dominio) }, [enFlota])
 
   const elegir = (v) => {
     setTexto(v.dominio)
@@ -74,7 +82,7 @@ export default function DominioInput({ valor, onCambio, vehiculos, autoFocus }) 
           setActivo(0)
           setAbierto(true)
           const d = normalizarDominio(e.target.value)
-          onCambio(dominioValido(d) ? d : '')
+          onCambio((vehiculos || []).some((v) => v.dominio === d) ? d : '')
         }}
         onFocus={() => setAbierto(true)}
         onBlur={() => setTimeout(() => setAbierto(false), 150)}
@@ -95,9 +103,19 @@ export default function DominioInput({ valor, onCambio, vehiculos, autoFocus }) 
       {texto.trim() && (
         exacto
           ? <p className="dominio-info ok">{resumenVehiculo(exacto) || 'En la flota'}</p>
-          : dominioValido(dominio)
-            ? <p className="dominio-info">{dominio} no está en la flota: el trámite se carga igual y los datos del vehículo se completan después.</p>
-            : !sugerencias.length && <p className="dominio-info aviso">No es un dominio válido (AA123BB o ABC123) ni coincide con ningún vehículo.</p>
+          : sugerencias.length > 0 && !dominioValido(dominio)
+            ? <p className="dominio-info">Elegí un vehículo de la lista.</p>
+            : (
+              <p className="dominio-info aviso">
+                {dominioValido(dominio)
+                  ? `${dominio} no está en la flota.`
+                  : 'Ningún vehículo de la flota coincide.'}
+                {' '}
+                {onAgregar && dominioValido(dominio)
+                  ? <button type="button" className="link" onMouseDown={(e) => e.preventDefault()} onClick={() => onAgregar(dominio)}>Agregarlo a la flota</button>
+                  : 'Si es un vehículo nuevo, pedí que lo agreguen en Flota.'}
+              </p>
+            )
       )}
     </div>
   )

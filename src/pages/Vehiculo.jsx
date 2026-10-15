@@ -3,39 +3,44 @@ import * as api from '../api.js'
 import { EstadoChip } from '../componentes/Estado.jsx'
 import Modal from '../componentes/Modal.jsx'
 import Selector from '../componentes/Selector.jsx'
-import { TIPOS_REGISTRALES, USOS, fechaHora } from '../formato.js'
+import { fechaHora } from '../formato.js'
 
 // Los datos que vienen de la planilla y los que se cargan a mano, separados:
 // los primeros los puede pisar la proxima lectura de la red (salvo que se
 // corrijan aca, y entonces quedan marcados), los segundos solo cambian desde
 // aca.
+// [campo, etiqueta, lista del catalogo]. Con lista, el campo es un selector
+// que sugiere esos valores (y los que ya hay en la flota) pero acepta uno nuevo.
 const PLANILLA = [
-  ['unidad', 'Unidad (Nº interno)'], ['rol', 'Rol en la unidad'], ['marca', 'Marca'], ['modelo', 'Modelo'],
-  ['configuracion', 'Tipo / cabina'], ['anio', 'Año'], ['chofer', 'Chofer / responsable'], ['estado', 'Estado'],
-  ['titular', 'Titular'], ['localidad', 'Localidad'], ['sector', 'Sector'],
+  ['unidad', 'Unidad (Nº interno)'], ['rol', 'Rol en la unidad', 'roles'], ['marca', 'Marca', 'marcasPlanilla'],
+  ['modelo', 'Modelo'], ['configuracion', 'Tipo / cabina'], ['anio', 'Año'], ['chofer', 'Chofer / responsable'],
+  ['estado', 'Estado', 'estadosFlota'], ['titular', 'Titular', 'titulares'], ['localidad', 'Localidad', 'localidades'],
+  ['sector', 'Sector', 'sectores'],
 ]
 const REGISTRALES = [
-  ['marcaChasis', 'Marca de chasis'], ['nroChasis', 'Nº de chasis'],
-  ['marcaMotor', 'Marca de motor'], ['nroMotor', 'Nº de motor'],
-  ['uso', 'Uso', 'usos'], ['tipoRegistral', 'Tipo (como figura en el título)', 'tipos-registrales'],
+  ['marcaChasis', 'Marca de chasis', 'marcas'], ['nroChasis', 'Nº de chasis'],
+  ['marcaMotor', 'Marca de motor', 'marcasMotor'], ['nroMotor', 'Nº de motor'],
+  ['uso', 'Uso', 'usos'], ['tipoRegistral', 'Tipo (como figura en el título)', 'tiposRegistrales'],
   ['modeloRegistral', 'Modelo (como figura en el título)'],
 ]
 // Nombre de columna (lo que devuelve "manuales") -> campo de la API.
 const COLUMNA_A_CAMPO = { configuracion: 'configuracion', anio: 'anio' }
 
 export default function Vehiculo({ vehiculo, catalogo, usuario, tramites, onGuardado, onNuevoTramite, onAbrirTramite, onCerrar }) {
-  const nuevo = !vehiculo
+  // vehiculo: el objeto de la flota, o { nuevo: true, dominio } para un alta
+  // (con el dominio ya escrito si viene desde el alta de un tramite).
+  const nuevo = !vehiculo || vehiculo.nuevo
   const editable = usuario.esGestor
   const [f, setF] = useState(() => {
-    const base = { dominio: '', categoria: 'CAMIONETA', observaciones: '' }
+    const base = { dominio: vehiculo?.nuevo ? vehiculo.dominio || '' : '', categoria: 'CAMIONETA', observaciones: '' }
     for (const [k] of [...PLANILLA, ...REGISTRALES]) base[k] = ''
-    return vehiculo ? { ...base, ...Object.fromEntries(Object.entries(vehiculo).map(([k, v]) => [k, v ?? ''])) } : base
+    return vehiculo && !vehiculo.nuevo ? { ...base, ...Object.fromEntries(Object.entries(vehiculo).map(([k, v]) => [k, v ?? ''])) } : base
   })
   const [error, setError] = useState('')
   const [guardando, setGuardando] = useState(false)
   const [listo, setListo] = useState(false)
-  const manuales = new Set((vehiculo?.manuales || []).map((c) => COLUMNA_A_CAMPO[c] || c))
-  const delDominio = vehiculo ? tramites.filter((t) => t.dominio === vehiculo.dominio) : []
+  const manuales = new Set((nuevo ? [] : vehiculo.manuales || []).map((c) => COLUMNA_A_CAMPO[c] || c))
+  const delDominio = nuevo ? [] : tramites.filter((t) => t.dominio === vehiculo.dominio)
 
   const set = (k, v) => { setF((x) => ({ ...x, [k]: v })); setListo(false) }
 
@@ -57,17 +62,14 @@ export default function Vehiculo({ vehiculo, catalogo, usuario, tramites, onGuar
     }
   }
 
-  // Uso y tipo registral se eligen de una lista con busqueda, pero aceptan
-  // cualquier otro valor: el Registro tiene mas tipos de los que vale listar.
-  const SUGERENCIAS = {
-    usos: USOS.map((u) => ({ clave: u, nombre: u })),
-    'tipos-registrales': TIPOS_REGISTRALES.map((t) => ({ clave: t, nombre: t })),
-  }
+  // Las listas vienen del catalogo del servidor: la base (marcas, usos) mas
+  // lo que ya se cargo en la flota, asi un valor nuevo aparece para todos.
+  const opcionesDe = (lista) => (catalogo.listas?.[lista] || []).map((v) => ({ clave: v, nombre: v }))
   const campo = (k, etiqueta, lista) => (
     <label key={k} className={manuales.has(k) ? 'corregido' : ''}>
       <span>{etiqueta}{manuales.has(k) && <small> · corregido a mano</small>}</span>
       {lista && editable
-        ? <Selector libre valor={f[k]} opciones={SUGERENCIAS[lista]} onCambio={(v) => set(k, v)} placeholder="Elegí o escribí" />
+        ? <Selector libre valor={f[k]} opciones={opcionesDe(lista)} onCambio={(v) => set(k, v)} placeholder="Elegí de la lista o escribí uno nuevo" />
         : <input type={k === 'anio' ? 'number' : 'text'} value={f[k]} readOnly={!editable} onChange={(e) => set(k, e.target.value)} />}
     </label>
   )
