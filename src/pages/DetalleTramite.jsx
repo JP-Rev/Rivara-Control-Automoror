@@ -3,6 +3,7 @@ import * as api from '../api.js'
 import { EstadoChip } from '../componentes/Estado.jsx'
 import { resumenVehiculo } from '../componentes/DominioInput.jsx'
 import Modal from '../componentes/Modal.jsx'
+import Selector from '../componentes/Selector.jsx'
 import { fechaHora, haceCuanto } from '../formato.js'
 import { Icono } from '../iconos.jsx'
 
@@ -253,17 +254,13 @@ export default function DetalleTramite({ id, catalogo, usuario, onCambio, onBorr
             <form className="forma forma--caja" onSubmit={guardarEdicion}>
               <label>
                 Trámite
-                <select value={edicion.tipo} onChange={(e) => setEdicion((x) => ({ ...x, tipo: e.target.value }))}>
-                  {catalogo.tipos.map((x) => <option key={x.clave} value={x.clave}>{x.nombre}</option>)}
-                </select>
+                <Selector valor={edicion.tipo} opciones={catalogo.tipos} onCambio={(tipo) => setEdicion((x) => ({ ...x, tipo }))} />
               </label>
               {catalogo.tipos.find((x) => x.clave === edicion.tipo)?.motivo && (
                 <label>
                   Motivo
-                  <select value={edicion.motivo} onChange={(e) => setEdicion((x) => ({ ...x, motivo: e.target.value }))}>
-                    <option value="">Sin indicar</option>
-                    {catalogo.motivos.map((m) => <option key={m.clave} value={m.clave}>{m.nombre}</option>)}
-                  </select>
+                  <Selector valor={edicion.motivo} opciones={catalogo.motivos} placeholder="Sin indicar"
+                            onCambio={(motivo) => setEdicion((x) => ({ ...x, motivo }))} />
                 </label>
               )}
               {usuario.esGestor && (

@@ -1,6 +1,7 @@
 import { useState } from 'react'
 import * as api from '../api.js'
 import Modal from '../componentes/Modal.jsx'
+import Selector from '../componentes/Selector.jsx'
 import { TIPOS_REGISTRALES, hoyISO, marcaYModeloSugeridos } from '../formato.js'
 import { Icono } from '../iconos.jsx'
 
@@ -106,13 +107,10 @@ export default function Ddjj({ tramite, catalogo, usuario, onListo, onCerrar }) 
   const campoDato = (k, etiqueta, opciones = {}) => (
     <label className={`dato-ddjj dato-ddjj--${f[k].origen}`}>
       {etiqueta}
-      <input
-        type="text"
-        value={f[k].valor}
-        list={opciones.lista}
-        placeholder={opciones.placeholder}
-        onChange={(e) => setDato(k, e.target.value)}
-      />
+      {opciones.sugerencias
+        ? <Selector libre valor={f[k].valor} opciones={opciones.sugerencias} placeholder={opciones.placeholder}
+                    onCambio={(v) => setDato(k, v)} />
+        : <input type="text" value={f[k].valor} placeholder={opciones.placeholder} onChange={(e) => setDato(k, e.target.value)} />}
       {ETIQUETA_ORIGEN[f[k].origen] && <small>{ETIQUETA_ORIGEN[f[k].origen]}</small>}
     </label>
   )
@@ -153,15 +151,12 @@ export default function Ddjj({ tramite, catalogo, usuario, onListo, onCerrar }) 
           <p className="apagado">Dominio <b className="patente">{tramite.dominio}</b></p>
           <div className="forma-fila">
             {campoDato('marca', 'Marca', { placeholder: 'VOLKSWAGEN' })}
-            {campoDato('tipo', 'Tipo', { lista: 'tipos-registrales', placeholder: 'PICK UP' })}
+            {campoDato('tipo', 'Tipo', { sugerencias: TIPOS_REGISTRALES.map((t) => ({ clave: t, nombre: t })), placeholder: 'PICK UP' })}
           </div>
           <div className="forma-fila">
             {campoDato('modelo', 'Modelo', { placeholder: 'AMAROK TRENDLINE 4X4 2.0L TDI 140 CV' })}
             {campoDato('motor', 'Motor Nº', { placeholder: 'CFN 133182' })}
           </div>
-          <datalist id="tipos-registrales">
-            {TIPOS_REGISTRALES.map((t) => <option key={t} value={t} />)}
-          </datalist>
         </fieldset>
 
         <fieldset className="opciones">

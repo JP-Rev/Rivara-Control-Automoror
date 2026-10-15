@@ -25,9 +25,6 @@ const TITULOS = {
 // seguimiento lo mueve otra persona y no hay que recargar para verlo.
 const REFRESCO_MS = 60_000
 
-const iniciales = (texto) =>
-  String(texto || '').split(/[\s@.]+/).filter(Boolean).slice(0, 2).map((p) => p[0]).join('').toUpperCase()
-
 // Resume lo que trajo la lectura automatica de las planillas al entrar. Solo
 // se muestra si paso algo: una lectura sin novedades no merece un cartel.
 function avisoDeSincronizacion(r) {
@@ -197,83 +194,91 @@ function App() {
   ]
 
   return (
-    <div className={`tablero ${menuAbierto ? 'tablero--menu-abierto' : ''}`}>
+    <div className={`ic ${menuAbierto ? 'ic--menu-abierto' : ''}`}>
       {menuAbierto && (
-        <button type="button" className="velo" aria-label="Cerrar menú" onClick={() => setMenuAbierto(false)} />
+        <button type="button" className="ic-velo" aria-label="Cerrar menú" onClick={() => setMenuAbierto(false)} />
       )}
 
-      <aside className="lateral">
-        <button type="button" className="cerrar-menu" aria-label="Cerrar menú" onClick={() => setMenuAbierto(false)}>
-          <Icono clave="cerrar" tamano={20} />
-        </button>
+      {/* Mismo armado que Informar CPE a Visec: arriba, a todo el ancho, la
+          banda de la app y el titulo de la pantalla; abajo, la barra lateral
+          (un solo panel blanco) y el contenido, con los bordes alineados. */}
+      <div className="ic-arriba">
+        <header className="ic-barra">
+          <button type="button" className="ic-hamburguesa" aria-label="Abrir menú" aria-expanded={menuAbierto}
+                  onClick={() => setMenuAbierto(true)}>
+            <Icono clave="menu" tamano={22} />
+          </button>
+          {leyendo && <span className="rv-chip rv-chip--neutro">Leyendo las planillas de la red…</span>}
+        </header>
 
-        <a className="rv-card lateral-marca" href={urlPortal} title="Volver al portal">
-          {/* El isotipo es un PNG claro: necesita su propio recuadro o queda
-              un rectángulo sucio sobre el papel. */}
-          <span className="lateral-disco"><img src={logo} alt="Rivara" /></span>
-          <span className="lateral-nombre">
-            <strong>RIVARA</strong>
-            <small>Registro Automotor</small>
+        <section className="rv-hero ic-hero">
+          {/* El isotipo es un PNG claro: sobre el degradé necesita su propio
+              recuadro blanco. */}
+          <span className="ic-hero-logo"><img src={logo} alt="Rivara" /></span>
+          <span className="ic-hero-texto">
+            <strong>Trámites del Registro Automotor</strong>
+            <small>Transferencias, placas, duplicados y denuncias de venta de toda la flota.</small>
           </span>
-        </a>
+          <span className="ic-hero-cifras">
+            <span><strong className="rv-num">{abiertos}</strong><small>Abiertos</small></span>
+            <span><strong className="rv-num">{sinTomar}</strong><small>Sin tomar</small></span>
+            <span><strong className="rv-num">{vehiculos.length}</strong><small>Vehículos</small></span>
+          </span>
+        </section>
 
-        <nav className="lateral-nav" aria-label="Secciones">
-          {MENUS.map((menu) => (
-            <div key={menu.titulo} className="lateral-grupo">
-              <span className="rv-eyebrow lateral-grupo-titulo">{menu.titulo}</span>
-              {menu.items.map((item) => (
-                <button
-                  key={item.id}
-                  type="button"
-                  className={`rv-nav-item ${vista === item.id ? 'rv-nav-item--activo' : ''}`}
-                  aria-current={vista === item.id ? 'page' : undefined}
-                  onClick={item.accion || (() => ir(item.id))}
-                >
-                  <Icono clave={item.icono} tamano={20} />
-                  <span className="lateral-item-label">{item.label}</span>
-                  {item.conteo > 0 && <span className="rv-nav-conteo">{item.conteo}</span>}
-                </button>
-              ))}
-            </div>
-          ))}
-        </nav>
+        <div className="ic-encabezado-pagina">
+          <h1 className="ic-titulo-pagina">{TITULOS[vista]}</h1>
+          {vista === 'bandeja' && (
+            <button type="button" className="boton" onClick={() => setNuevo({})}>
+              <Icono clave="mas" tamano={18} /> Nuevo trámite
+            </button>
+          )}
+        </div>
+      </div>
 
-        <div className="rv-card lateral-pie">
-          <div className="lateral-usuario">
-            <span className="rv-disco rv-disco--sm">{iniciales(usuario.nombre || usuario.email)}</span>
-            <span className="lateral-identidad">
+      <div className="ic-fila">
+        <aside className="ic-lateral">
+          <button type="button" className="ic-cerrar-menu" aria-label="Cerrar menú" onClick={() => setMenuAbierto(false)}>
+            <Icono clave="cerrar" tamano={20} />
+          </button>
+
+          <div className="rv-card ic-marca">
+            <span className="rv-disco rv-disco--sm" aria-hidden="true"><Icono clave="perfil" tamano={20} /></span>
+            <span className="ic-marca-texto">
               <strong>{usuario.nombre || usuario.email}</strong>
-              <small>
-                {usuario.esGestor ? 'Gestiona trámites' : 'Carga trámites'} · {usuario.via === 'local' ? 'sesión propia' : 'sesión del portal'}
-              </small>
+              <small>{usuario.esAdmin ? 'Administrador' : usuario.esGestor ? 'Gestiona trámites' : 'Carga trámites'} · Registro automotor</small>
             </span>
           </div>
-          <div className="lateral-acciones">
-            <a className="link" href={urlPortal}>Portal</a>
+
+          <nav className="rv-nav" aria-label="Secciones">
+            {MENUS.flatMap((menu) => menu.items).map((item) => (
+              <button
+                key={item.id}
+                type="button"
+                className={`rv-nav-item ${vista === item.id ? 'rv-nav-item--activo' : ''}`}
+                aria-current={vista === item.id ? 'page' : undefined}
+                onClick={item.accion || (() => ir(item.id))}
+              >
+                <Icono clave={item.icono} tamano={21} />
+                <span className="ic-nav-label">{item.label}</span>
+                {item.conteo > 0 && <span className="rv-nav-conteo">{item.conteo}</span>}
+              </button>
+            ))}
+          </nav>
+
+          <div className="rv-card ic-lateral-pie">
+            <span className="ic-pie-titulo">
+              <img src={logo} alt="" width="22" height="22" />Rivara · Registro automotor
+            </span>
             <button type="button" className="link" onClick={() => ir('password')}>Contraseña de respaldo</button>
             {/* Solo si entró por la contraseña de respaldo: la sesión del
                 portal se cierra desde el portal, no desde acá. */}
             {usuario.via === 'local' && <button type="button" className="link" onClick={logout}>Salir</button>}
+            <a className="rv-btn rv-btn--secundario" href={urlPortal}>Volver al portal</a>
           </div>
-        </div>
-      </aside>
+        </aside>
 
-      <div className="principal">
-        <header className="barra">
-          <button type="button" className="hamburguesa" aria-label="Abrir menú" aria-expanded={menuAbierto} onClick={() => setMenuAbierto(true)}>
-            <Icono clave="menu" tamano={22} />
-          </button>
-          <h1 className="barra-titulo">{TITULOS[vista]}</h1>
-          <div className="barra-acciones">
-            {leyendo && <span className="chip-fecha">Leyendo las planillas de la red…</span>}
-            {vista === 'bandeja' && (
-              <button type="button" className="boton" onClick={() => setNuevo({})}>
-                <Icono clave="mas" tamano={18} /> Nuevo trámite
-              </button>
-            )}
-          </div>
-        </header>
-
+      <div className="ic-principal">
         <main className="contenido">
           {error && (
             <p className="nota error" role="alert">
@@ -336,9 +341,11 @@ function App() {
           </p>
         </footer>
       </div>
+      </div>
 
       {nuevo && catalogo && (
-        <NuevoTramite catalogo={catalogo} vehiculos={vehiculos} dominioInicial={nuevo.dominio}
+        <NuevoTramite catalogo={catalogo} vehiculos={vehiculos} tramites={tramites || []} dominioInicial={nuevo.dominio}
+                      onAbrir={(id) => { setNuevo(null); setDetalle(id) }}
                       onCerrar={() => setNuevo(null)}
                       onCreado={(t) => { actualizarTramite(t); setNuevo(null); setVista('bandeja'); setDetalle(t.id) }} />
       )}

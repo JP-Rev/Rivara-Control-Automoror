@@ -2,21 +2,47 @@
 // por /api/catalogo: un solo lugar para los nombres, asi la etiqueta de un
 // estado no es una en la bandeja y otra en el historial.
 
+// detalle y palabras alimentan el buscador del alta: la gente no dice
+// "reposicion de placas", dice "se le cayo la chapa".
 export const TIPOS = [
-  { clave: 'TRANSFERENCIA', nombre: 'Transferencia', corto: 'Transferencia' },
-  { clave: 'REPOSICION_PLACAS', nombre: 'Reposición de placas', corto: 'Placas', motivo: true, ddjj: 'placas' },
-  { clave: 'DUPLICADO_TITULO', nombre: 'Duplicado de título', corto: 'Dup. título', motivo: true, ddjj: 'titulo' },
-  { clave: 'DUPLICADO_CEDULA', nombre: 'Duplicado de cédula', corto: 'Dup. cédula', motivo: true, ddjj: 'cedula' },
-  { clave: 'DENUNCIA_VENTA', nombre: 'Denuncia de venta', corto: 'Denuncia venta' },
-  { clave: 'OTRO', nombre: 'Otro trámite', corto: 'Otro' },
+  {
+    clave: 'TRANSFERENCIA', nombre: 'Transferencia', corto: 'Transferencia',
+    detalle: 'Cambio de titular por compra o venta',
+    palabras: ['08', 'formulario 08', 'cambio de titular', 'titularidad', 'compra', 'venta', 'vender', 'comprador'],
+  },
+  {
+    clave: 'REPOSICION_PLACAS', nombre: 'Reposición de placas', corto: 'Placas', motivo: true, ddjj: 'placas',
+    detalle: 'Placas perdidas, robadas o rotas',
+    palabras: ['patente', 'patentes', 'chapa', 'chapas', 'placa', 'se cayo', 'perdida'],
+  },
+  {
+    clave: 'DUPLICADO_TITULO', nombre: 'Duplicado de título', corto: 'Dup. título', motivo: true, ddjj: 'titulo',
+    detalle: 'Nuevo título del automotor',
+    palabras: ['titulo', 'titulo automotor', 'segundo titulo'],
+  },
+  {
+    clave: 'DUPLICADO_CEDULA', nombre: 'Duplicado de cédula', corto: 'Dup. cédula', motivo: true, ddjj: 'cedula',
+    detalle: 'Cédula verde o azul',
+    palabras: ['cedula', 'verde', 'azul', 'tarjeta', 'autorizado', 'autorizado a conducir', 'cedula azul', 'cedula verde'],
+  },
+  {
+    clave: 'DENUNCIA_VENTA', nombre: 'Denuncia de venta', corto: 'Denuncia venta',
+    detalle: 'Se vendió y el comprador no transfirió',
+    palabras: ['denuncia', 'vendido', 'vendida', 'venta', 'no transfirio', 'responsabilidad'],
+  },
+  {
+    clave: 'OTRO', nombre: 'Otro trámite', corto: 'Otro',
+    detalle: 'Contalo en observaciones',
+    palabras: ['informe', 'dominio', 'baja', 'alta', 'prenda', 'cambio de radicacion', 'radicacion', 'verificacion'],
+  },
 ]
 
 // Por que se repone o se duplica. Solo el extravio lleva la DDJJ de la
 // Disposicion 235/03; el robo va con denuncia policial.
 export const MOTIVOS = [
-  { clave: 'EXTRAVIO', nombre: 'Extravío' },
-  { clave: 'ROBO', nombre: 'Robo o hurto' },
-  { clave: 'DETERIORO', nombre: 'Deterioro' },
+  { clave: 'EXTRAVIO', nombre: 'Extravío', detalle: 'Lleva la DDJJ de la Disposición 235/03', palabras: ['perdida', 'perdio', 'perdi', 'extraviado'] },
+  { clave: 'ROBO', nombre: 'Robo o hurto', detalle: 'Va con la denuncia policial', palabras: ['robaron', 'hurto', 'denuncia policial'] },
+  { clave: 'DETERIORO', nombre: 'Deterioro', detalle: 'Rotas, ilegibles o dañadas', palabras: ['rota', 'roto', 'dañada', 'ilegible', 'gastada'] },
 ]
 
 // SOLICITADO es el estado de entrada: lo cargo alguien y todavia no se

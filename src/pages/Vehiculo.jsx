@@ -2,6 +2,7 @@ import { useState } from 'react'
 import * as api from '../api.js'
 import { EstadoChip } from '../componentes/Estado.jsx'
 import Modal from '../componentes/Modal.jsx'
+import Selector from '../componentes/Selector.jsx'
 import { TIPOS_REGISTRALES, USOS, fechaHora } from '../formato.js'
 
 // Los datos que vienen de la planilla y los que se cargan a mano, separados:
@@ -56,11 +57,18 @@ export default function Vehiculo({ vehiculo, catalogo, usuario, tramites, onGuar
     }
   }
 
+  // Uso y tipo registral se eligen de una lista con busqueda, pero aceptan
+  // cualquier otro valor: el Registro tiene mas tipos de los que vale listar.
+  const SUGERENCIAS = {
+    usos: USOS.map((u) => ({ clave: u, nombre: u })),
+    'tipos-registrales': TIPOS_REGISTRALES.map((t) => ({ clave: t, nombre: t })),
+  }
   const campo = (k, etiqueta, lista) => (
     <label key={k} className={manuales.has(k) ? 'corregido' : ''}>
       <span>{etiqueta}{manuales.has(k) && <small> · corregido a mano</small>}</span>
-      <input type={k === 'anio' ? 'number' : 'text'} value={f[k]} list={lista} readOnly={!editable}
-             onChange={(e) => set(k, e.target.value)} />
+      {lista && editable
+        ? <Selector libre valor={f[k]} opciones={SUGERENCIAS[lista]} onCambio={(v) => set(k, v)} placeholder="Elegí o escribí" />
+        : <input type={k === 'anio' ? 'number' : 'text'} value={f[k]} readOnly={!editable} onChange={(e) => set(k, e.target.value)} />}
     </label>
   )
 
@@ -72,9 +80,7 @@ export default function Vehiculo({ vehiculo, catalogo, usuario, tramites, onGuar
             <label>Dominio<input type="text" value={f.dominio} autoCapitalize="characters" onChange={(e) => set('dominio', e.target.value)} /></label>
             <label>
               Tipo de vehículo
-              <select value={f.categoria} onChange={(e) => set('categoria', e.target.value)}>
-                {catalogo.categorias.map((c) => <option key={c.clave} value={c.clave}>{c.nombre}</option>)}
-              </select>
+              <Selector valor={f.categoria} opciones={catalogo.categorias} onCambio={(c) => set('categoria', c)} />
             </label>
           </div>
         ) : (
@@ -93,8 +99,6 @@ export default function Vehiculo({ vehiculo, catalogo, usuario, tramites, onGuar
           <div className="grilla-campos">
             {REGISTRALES.map(([k, n, lista]) => campo(k, n, lista))}
           </div>
-          <datalist id="tipos-registrales">{TIPOS_REGISTRALES.map((t) => <option key={t} value={t} />)}</datalist>
-          <datalist id="usos">{USOS.map((t) => <option key={t} value={t} />)}</datalist>
         </fieldset>
 
         <fieldset className="opciones">

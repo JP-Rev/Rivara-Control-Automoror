@@ -164,106 +164,125 @@ label.check input { width: 16px; height: 16px; }
 }
 
 /* ==========================================================================
-   Shell — barra lateral clara y columna de contenido
+   Shell — el mismo de Informar CPE a Visec
    --------------------------------------------------------------------------
-   Mismo armado que la portada del portal: la barra lateral no es un bloque
-   verde sino una columna sobre el papel, con tarjetas flotando. Acá los menús
-   son los dos módulos (Finanzas y Costos Producción) en vez de las categorías
-   de aplicativos.
+   Arriba, a todo el ancho, la banda verde de la app y el titulo de la
+   pantalla. Abajo, la barra lateral y el contenido, con los bordes alineados.
+   La barra lateral es UN panel blanco que contiene todo el menu (suelto sobre
+   el papel parecia desarmado); las tarjetas de adentro pasan al tono del
+   fondo para seguir distinguiendose del panel. Mismas medidas que el portal:
+   20px de padding, 22px entre bloques.
    ========================================================================== */
 
-.tablero { display: flex; flex-wrap: wrap; gap: 22px; min-height: 100vh; padding: 20px; }
+.ic {
+  display: flex;
+  flex-direction: column;
+  gap: 22px;
+  max-width: 1440px;
+  min-height: 100vh;
+  margin: 0 auto;
+  padding: 20px;
+  padding-top: max(20px, env(safe-area-inset-top));
+}
 
-.lateral {
-  flex: 1 1 220px;
-  max-width: 262px;
-  min-width: 200px;
+.ic-arriba { display: flex; flex-direction: column; gap: 22px; }
+.ic-fila { display: flex; gap: 22px; align-items: flex-start; }
+
+.ic-encabezado-pagina { display: flex; align-items: center; justify-content: space-between; gap: 12px 22px; flex-wrap: wrap; }
+.ic-titulo-pagina { font-size: 22px; font-weight: 800; letter-spacing: -0.01em; }
+
+.ic-lateral {
+  position: sticky;
+  top: 20px;
+  flex: 0 0 250px;
   display: flex;
   flex-direction: column;
   gap: 18px;
+  /* Hasta el pie de la pantalla, para que el recuadro de "Volver al portal"
+     quede abajo de todo. */
+  min-height: calc(100vh - 200px);
+  padding: 16px;
+  background: var(--rv-surface);
+  border: 1px solid var(--rv-tint-borde);
+  border-radius: var(--rv-r-lg);
+  box-shadow: var(--rv-sombra);
 }
 
-.lateral-marca {
-  display: flex;
-  align-items: center;
-  gap: 12px;
-  padding: 14px 16px;
-}
+.ic-lateral .rv-card { background: var(--rv-bg); box-shadow: none; }
 
-/* El logo es un PNG claro y opaco: necesita su propio recuadro blanco o queda
-   un rectángulo sucio sobre cualquier fondo que no sea blanco. */
-.lateral-disco {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex: 0 0 42px;
-  width: 42px;
-  height: 42px;
-  padding: 4px;
-  background: var(--rv-tint);
-  border-radius: 12px;
-}
-.lateral-disco img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.ic-marca { display: flex; align-items: center; gap: 12px; padding: 16px; }
+.ic-marca-texto { display: flex; flex-direction: column; min-width: 0; }
+.ic-marca-texto strong { font-size: 15px; font-weight: 800; line-height: 1.2; overflow: hidden; text-overflow: ellipsis; }
+.ic-marca-texto small { font-size: 13px; color: var(--rv-verde-osc); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
 
-.lateral-nombre { display: flex; flex-direction: column; min-width: 0; line-height: 1.2; }
-.lateral-nombre strong { font-size: 16px; font-weight: 800; letter-spacing: -0.01em; }
-.lateral-nombre small { font-size: 12.5px; font-weight: 600; color: var(--rv-verde-osc); }
+.ic-nav-label { flex: 1; min-width: 0; line-height: 1.25; text-align: left; }
 
-.lateral-nav { display: flex; flex-direction: column; gap: 16px; }
-.lateral-grupo { display: flex; flex-direction: column; gap: 6px; }
-.lateral-grupo-titulo { padding: 0 4px 2px; }
+.ic-lateral-pie { margin-top: auto; display: flex; flex-direction: column; align-items: flex-start; gap: 10px; padding: 16px; }
+.ic-lateral-pie .rv-btn { align-self: stretch; justify-content: center; margin-top: 4px; }
+.ic-pie-titulo { display: flex; align-items: center; gap: 10px; font-size: 14px; font-weight: 700; color: var(--rv-verde-osc); }
+.ic-pie-titulo img { object-fit: contain; }
 
-.lateral-item-label { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-
-.lateral-pie { margin-top: auto; display: flex; flex-direction: column; gap: 10px; padding: 16px; }
-.lateral-usuario { display: flex; align-items: center; gap: 11px; }
-.lateral-identidad { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
-.lateral-identidad strong { font-size: 14px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.lateral-identidad small { font-size: 12.5px; color: var(--rv-texto-3); }
-.lateral-acciones { display: flex; flex-wrap: wrap; gap: 14px; }
-
-/* ---- Columna principal ---- */
-
-.principal { flex: 1 1 520px; min-width: 0; display: flex; flex-direction: column; gap: 18px; }
-
-.barra { display: flex; align-items: center; gap: 14px; flex-wrap: wrap; }
-.barra-titulo { flex: 1; min-width: 0; font-size: 22px; font-weight: 800; letter-spacing: -0.01em; }
-.barra-acciones { display: flex; align-items: center; gap: 12px; flex-wrap: wrap; }
-.chip-fecha { font-size: 13px; font-weight: 600; color: var(--rv-texto-3); }
-
-.contenido { flex: 1; min-width: 0; display: flex; flex-direction: column; }
+.ic-principal { flex: 1 1 420px; min-width: 0; display: flex; flex-direction: column; gap: 18px; }
+.contenido { min-width: 0; display: flex; flex-direction: column; }
 
 .pie { padding: 18px 20px; display: flex; flex-direction: column; gap: 5px; }
 .pie p { font-size: 12.5px; color: var(--rv-texto-4); max-width: 94ch; }
 
-/* En escritorio el botón de menú no existe: la barra lateral está siempre. */
-.hamburguesa, .cerrar-menu { display: none; }
+/* En escritorio no existen: la barra lateral esta siempre a la vista, y la
+   barra de arriba solo trae el boton de menu (y el aviso de lectura). */
+.ic-hamburguesa, .ic-cerrar-menu, .ic-velo { display: none; }
+.ic-barra { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.ic-barra:not(:has(.rv-chip)) { display: none; }
 
-/* Pantallas chicas: la barra lateral pasa a ser un panel que se corre. Apilada
-   ocupaba la primera pantalla entera y había que scrollear para ver un dato. */
+.ic-hero { display: flex; align-items: center; gap: 18px; flex-wrap: wrap; }
+.ic-hero-logo {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 46px;
+  width: 46px;
+  height: 46px;
+  padding: 5px;
+  background: #fff;
+  border-radius: 12px;
+}
+.ic-hero-logo img { max-width: 100%; max-height: 100%; object-fit: contain; }
+.ic-hero-texto { display: flex; flex-direction: column; min-width: 0; flex: 1 1 240px; }
+.ic-hero-texto strong { font-size: 22px; font-weight: 800; letter-spacing: -0.01em; line-height: 1.15; }
+.ic-hero-texto small { font-size: 13.5px; color: rgba(255, 255, 255, 0.9); }
+.ic-hero-cifras { display: flex; gap: 20px; flex-wrap: wrap; }
+.ic-hero-cifras > span { display: flex; flex-direction: column; }
+.ic-hero-cifras strong { font-size: 18px; font-weight: 800; line-height: 1.1; }
+.ic-hero-cifras small { font-size: 10.5px; letter-spacing: 0.1em; text-transform: uppercase; color: rgba(255, 255, 255, 0.85); }
+
+/* Pantallas chicas: la barra lateral pasa a ser un panel que se corre
+   (kit §7). Apilada se comia la primera pantalla entera. */
 @media (max-width: 860px) {
-  .tablero { padding: 14px; gap: 16px; }
+  .ic { padding: 14px; gap: 16px; }
+  .ic-arriba { gap: 16px; }
+  .ic-barra, .ic-barra:not(:has(.rv-chip)) { display: flex; }
 
-  .lateral {
+  .ic-lateral {
     position: fixed;
     top: 0;
     left: 0;
     z-index: 40;
     width: min(290px, 86vw);
-    max-width: none;
-    /* dvh y no vh: en el celular la barra del navegador se come el resto. */
     height: 100dvh;
+    min-height: 0;
     padding: 16px;
     padding-top: max(16px, env(safe-area-inset-top));
     overflow-y: auto;
-    background: var(--rv-bg);
+    border: 0;
+    border-radius: 0;
     box-shadow: 4px 0 24px rgba(35, 48, 31, 0.18);
     transform: translateX(-100%);
     transition: transform 0.22s ease;
   }
-  .tablero--menu-abierto .lateral { transform: translateX(0); }
+  .ic--menu-abierto .ic-lateral { transform: translateX(0); }
 
-  .velo {
+  .ic-velo {
+    display: block;
     position: fixed;
     inset: 0;
     z-index: 39;
@@ -273,13 +292,12 @@ label.check input { width: 16px; height: 16px; }
     cursor: pointer;
   }
 
-  .hamburguesa, .cerrar-menu {
+  .ic-hamburguesa, .ic-cerrar-menu {
     display: flex;
     align-items: center;
     justify-content: center;
     flex: none;
-    /* 44px es el mínimo cómodo para un dedo. */
-    width: 44px;
+    width: 44px;   /* el minimo comodo para un dedo */
     height: 44px;
     color: var(--rv-verde-osc);
     background: var(--rv-surface);
@@ -288,14 +306,14 @@ label.check input { width: 16px; height: 16px; }
     box-shadow: var(--rv-sombra);
     cursor: pointer;
   }
-  .hamburguesa:hover, .cerrar-menu:hover { background: var(--rv-tint); }
-  .cerrar-menu { align-self: flex-end; margin-bottom: -6px; }
-
-  .barra-titulo { font-size: 19px; }
+  .ic-cerrar-menu { align-self: flex-end; margin-bottom: -6px; }
+  .ic-hero { gap: 14px; padding: 16px 18px; }
+  .ic-hero-texto strong { font-size: 19px; }
+  .ic-titulo-pagina { font-size: 19px; }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .lateral { transition: none; }
+  .ic-lateral { transition: none; }
 }
 
 /* ==========================================================================
@@ -413,9 +431,6 @@ input[readonly] { background: var(--rv-bg); color: var(--rv-texto-2); }
 .celda-detalle { display: block; margin-top: 3px; font-size: 12px; font-weight: 400; color: var(--rv-texto-4); white-space: normal; }
 .boton-peligro { background: var(--rv-bordo); }
 .boton-peligro:hover:not(:disabled) { background: #5e1f1a; }
-.lateral-marca { color: var(--rv-texto); }
-.lateral-marca:hover { color: var(--rv-texto); box-shadow: var(--rv-sombra-alta); }
-.lateral-acciones a.link { text-decoration: none; }
 code { font-size: 12px; padding: 1px 6px; border-radius: 6px; background: var(--rv-bg); color: var(--rv-texto-2); }
 
 .panel { padding: 20px; margin-bottom: 18px; }
@@ -875,9 +890,54 @@ label.corregido > span small { color: #7a4a06; font-weight: 600; }
 .dato-ddjj--falta small { color: var(--rv-bordo); }
 
 @media (max-width: 720px) {
-  .barra-acciones .boton { padding: 10px 14px; }
+  .ic-encabezado-pagina .boton { padding: 10px 14px; }
 }
 
 /* Cada grupo del formulario separado del anterior: sin esto la leyenda quedaba
    pegada al ultimo campo del grupo de arriba. */
 .modal-cuerpo .forma > fieldset { margin-top: 8px; }
+
+/* ---- Selector inteligente (formularios) ---- */
+
+.selector { position: relative; }
+.selector input { padding-right: 38px; cursor: text; }
+.selector-flecha { position: absolute; right: 14px; top: 50%; transform: translateY(-50%); color: var(--rv-texto-3); pointer-events: none; }
+.selector--invalido input { border-color: #E3C4C4; }
+.selector-lista {
+  position: absolute;
+  top: calc(100% + 6px);
+  left: 0;
+  right: 0;
+  z-index: 6;
+  margin: 0;
+  padding: 6px;
+  list-style: none;
+  background: var(--rv-surface);
+  border-radius: var(--rv-r-md);
+  box-shadow: 0 12px 32px rgba(22, 30, 18, 0.22);
+  max-height: 280px;
+  overflow-y: auto;
+}
+.selector-lista button {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 1px;
+  padding: 9px 12px;
+  border: 0;
+  border-radius: var(--rv-r-sm);
+  background: none;
+  font: inherit;
+  font-size: 14.5px;
+  font-weight: 600;
+  text-align: left;
+  color: var(--rv-texto);
+  cursor: pointer;
+}
+.selector-lista button small { font-size: 12.5px; font-weight: 400; color: var(--rv-texto-3); }
+.selector-lista button.activa { background: var(--rv-tint); }
+.selector-lista button.elegida { box-shadow: inset 3px 0 0 var(--rv-verde); }
+.selector-vacio { padding: 10px 12px; font-size: 13px; font-weight: 400; color: var(--rv-texto-3); }
+.ayuda-campo { font-size: 12.5px; font-weight: 400; color: var(--rv-texto-3); }
+.nota .mini-lista { margin-top: 8px; }

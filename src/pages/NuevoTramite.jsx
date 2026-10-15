@@ -1,13 +1,18 @@
 import { useState } from 'react'
 import * as api from '../api.js'
 import DominioInput from '../componentes/DominioInput.jsx'
+import { EstadoChip } from '../componentes/Estado.jsx'
 import Modal from '../componentes/Modal.jsx'
+import Selector from '../componentes/Selector.jsx'
 
 // Alta de un tramite. Lo minimo es el dominio y que hay que hacer: el resto
-// lo completa quien lo gestiona.
-export default function NuevoTramite({ catalogo, vehiculos, dominioInicial = '', onCreado, onCerrar }) {
+// lo completa quien lo gestiona. Los dos campos se buscan escribiendo: el
+// dominio por patente, chofer, unidad o marca; el tramite por como lo dice la
+// gente ("chapa", "cédula verde", "08").
+export default function NuevoTramite({ catalogo, vehiculos, tramites = [], dominioInicial = '', onCreado, onAbrir, onCerrar }) {
   const [dominio, setDominio] = useState(dominioInicial)
-  const [tipo, setTipo] = useState('')
+  // Reposicion de placas por defecto: es, por lejos, el que mas se carga.
+  const [tipo, setTipo] = useState('REPOSICION_PLACAS')
   const [motivo, setMotivo] = useState('')
   const [observaciones, setObservaciones] = useState('')
   const [error, setError] = useState('')
@@ -15,6 +20,11 @@ export default function NuevoTramite({ catalogo, vehiculos, dominioInicial = '',
 
   const def = catalogo.tipos.find((t) => t.clave === tipo)
   const listo = dominio && tipo && (tipo !== 'OTRO' || observaciones.trim())
+
+  // Lo que ese dominio ya tiene en curso: el error mas comun es cargar dos
+  // veces lo mismo desde dos personas distintas.
+  const abiertos = dominio ? tramites.filter((t) => t.dominio === dominio && t.estado !== 'TERMINADO') : []
+  const repetido = abiertos.find((t) => t.tipo === tipo)
 
   async function enviar(e) {
     e.preventDefault()
@@ -39,34 +49,40 @@ export default function NuevoTramite({ catalogo, vehiculos, dominioInicial = '',
           <DominioInput valor={dominioInicial} onCambio={setDominio} vehiculos={vehiculos} autoFocus={!dominioInicial} />
         </label>
 
-        <fieldset className="opciones">
-          <legend>¿Qué hay que hacer?</legend>
-          <div className="opciones-grilla">
-            {catalogo.tipos.map((t) => (
-              <label key={t.clave} className={`opcion ${tipo === t.clave ? 'opcion--elegida' : ''}`}>
-                <input type="radio" name="tipo" value={t.clave} checked={tipo === t.clave} onChange={() => setTipo(t.clave)} />
-                {t.nombre}
-              </label>
-            ))}
+        {abiertos.length > 0 && (
+          <div className={`nota ${repetido ? 'error' : ''}`}>
+            <p>
+              {repetido
+                ? <>Ese dominio ya tiene un trámite de <b>{def?.nombre.toLowerCase()}</b> abierto. ¿No es el mismo?</>
+                : <>{dominio} ya tiene {abiertos.length === 1 ? 'un trámite abierto' : `${abiertos.length} trámites abiertos`}:</>}
+            </p>
+            <ul className="mini-lista">
+              {abiertos.map((t) => (
+                <li key={t.id}>
+                  <button type="button" onClick={() => onAbrir(t.id)}>
+                    <span>#{t.id} · {catalogo.tipos.find((x) => x.clave === t.tipo)?.nombre}</span>
+                    <EstadoChip tramite={t} />
+                  </button>
+                </li>
+              ))}
+            </ul>
           </div>
-        </fieldset>
+        )}
+
+        <label>
+          ¿Qué hay que hacer?
+          <Selector valor={tipo} opciones={catalogo.tipos} onCambio={setTipo}
+                    placeholder="Escribí: transferencia, chapa, cédula, título, venta…" />
+        </label>
 
         {def?.motivo && (
-          <fieldset className="opciones">
-            <legend>Motivo <span className="apagado">(si no lo sabés, dejalo; lo completa quien gestiona)</span></legend>
-            <div className="opciones-fila">
-              {catalogo.motivos.map((m) => (
-                <label key={m.clave} className={`opcion ${motivo === m.clave ? 'opcion--elegida' : ''}`}>
-                  <input type="radio" name="motivo" value={m.clave} checked={motivo === m.clave}
-                         onChange={() => setMotivo(m.clave)} />
-                  {m.nombre}
-                </label>
-              ))}
-            </div>
+          <label>
+            <span>Motivo <span className="apagado">(si no lo sabés, dejalo; lo completa quien gestiona)</span></span>
+            <Selector valor={motivo} opciones={catalogo.motivos} onCambio={setMotivo} placeholder="Extravío, robo o deterioro" />
             {motivo === 'EXTRAVIO' && (
-              <p className="nota">Por extravío se presenta la DDJJ de la Disposición 235/03: se imprime desde el trámite, con los datos del vehículo.</p>
+              <small className="ayuda-campo">Por extravío se presenta la DDJJ de la Disposición 235/03: se imprime desde el trámite, con los datos del vehículo.</small>
             )}
-          </fieldset>
+          </label>
         )}
 
         <label>
