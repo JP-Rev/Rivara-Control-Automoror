@@ -1,0 +1,45 @@
+# Tramites del Registro Automotor — puerto 1010 (contrato de despliegue de la
+# intranet). Codigo en /srv/automotor, datos en /storage/automotor.
+#
+# Molde B: un solo contenedor. Node sirve el front y la API, y habla con
+# SQLite y con la red Windows (smbclient) para leer las planillas de flota.
+
+services:
+  automotor:
+    build: .
+    image: rivara-automotor:local
+    container_name: automotor
+    ports:
+      - "1010:80"
+    environment:
+      PORT: 80
+      DATA_DIR: /data
+      # El MISMO valor que en el .env del portal: es lo que hace que la cookie
+      # rivara_he que emite el portal la acepte esta app.
+      JWT_SECRET: ${JWT_SECRET:?definir JWT_SECRET en .env}
+      # Usuario de emergencia, opcional (portal caido y nadie con contrasena).
+      AUTOMOTOR_ADMIN_EMAIL: ${AUTOMOTOR_ADMIN_EMAIL:-}
+      AUTOMOTOR_ADMIN_PASSWORD: ${AUTOMOTOR_ADMIN_PASSWORD:-}
+      # Credenciales de Windows para leer \\server. Ver .env.example.
+      SMB_USUARIO: ${SMB_USUARIO:-}
+      SMB_PASSWORD: ${SMB_PASSWORD:-}
+      SMB_DOMINIO: ${SMB_DOMINIO:-}
+      SMB_IP: ${SMB_IP:-}
+      SMB_PROTOCOLO_MINIMO: ${SMB_PROTOCOLO_MINIMO:-}
+      PLANILLA_CAMIONETAS: ${PLANILLA_CAMIONETAS:-}
+      PLANILLA_CAMIONES: ${PLANILLA_CAMIONES:-}
+      SYNC_MINUTOS: ${SYNC_MINUTOS:-10}
+      DDJJ_LUGAR: ${DDJJ_LUGAR:-Buenos Aires}
+      DDJJ_SECCIONAL: ${DDJJ_SECCIONAL:-}
+    # Disco de datos del contrato (§7): el DIRECTORIO, nunca el .db suelto.
+    volumes:
+      - /storage/automotor:/data
+    restart: unless-stopped
+    healthcheck:
+      # Debian slim no trae wget ni curl; Node 22 tiene fetch global.
+      # 127.0.0.1 explicito para no intentar ::1 contra un server IPv4.
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:80/api/health').then(r=>process.exit(r.ok?0:1)).catch(()=>process.exit(1))"]
+      interval: 30s
+      timeout: 5s
+      retries: 3
+      start_period: 15s

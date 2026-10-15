@@ -1,0 +1,16 @@
+node_modules/
+dist/
+.env
+*.local
+.DS_Store
+
+# Base local de desarrollo. En el servidor la base vive en /storage/automotor,
+# fuera del repo (ver el contrato de despliegue).
+data/
+*.db
+*.db-wal
+*.db-shm
+
+# Planillas reales: tienen nombres de personas. No van al repo.
+*.xlsx
+*.xls

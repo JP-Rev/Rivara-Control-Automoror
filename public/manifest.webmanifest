@@ -1,0 +1,17 @@
+{
+  "name": "Trámites del Registro Automotor — Rivara",
+  "short_name": "Registro",
+  "description": "Trámites del Registro Automotor de la flota de Compañía Agrícola Rivara",
+  "start_url": "/",
+  "scope": "/",
+  "display": "standalone",
+  "orientation": "any",
+  "background_color": "#F4F3EC",
+  "theme_color": "#3c5a32",
+  "lang": "es-AR",
+  "icons": [
+    { "src": "/icono-192.png", "sizes": "192x192", "type": "image/png", "purpose": "any" },
+    { "src": "/icono-512.png", "sizes": "512x512", "type": "image/png", "purpose": "any" },
+    { "src": "/icono-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ]
+}

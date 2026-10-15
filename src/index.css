@@ -1,0 +1,6 @@
+/* Lo propio de esta app que no es disposicion va en App.css. Este archivo
+   queda para ajustes globales sobre la base compartida. */
+
+@media (prefers-reduced-motion: reduce) {
+  * { transition: none !important; animation: none !important; }
+}
