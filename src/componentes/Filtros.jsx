@@ -1,6 +1,7 @@
 import { useEffect, useId, useRef, useState } from 'react'
 import { normalizar } from '../filtros.js'
 import { Icono } from '../iconos.jsx'
+import Info from './Info.jsx'
 
 // Barra de filtros de cualquier lista: la caja de busqueda general y, al
 // lado, un menu desplegable por cada filtro (no fichas sueltas: con diez
@@ -31,8 +32,10 @@ export function Buscador({ valor, onCambio, placeholder, ayuda }) {
             <Icono clave="cerrar" tamano={16} />
           </button>
         )}
+        {/* Fuera del flujo del label: tocar la "i" no tiene que mover el foco
+            al campo de busqueda. */}
+        {ayuda && <span onClick={(e) => e.preventDefault()}><Info etiqueta="Cómo buscar" lado="izquierda">{ayuda}</Info></span>}
       </label>
-      {ayuda && <p className="buscador-ayuda">{ayuda}</p>}
     </div>
   )
 }

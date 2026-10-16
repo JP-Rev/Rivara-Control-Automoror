@@ -90,7 +90,7 @@ export default function Bandeja({ tramites, catalogo, usuario, onAbrir, onNuevo,
           valor={filtro.q}
           onCambio={(q) => set({ q })}
           placeholder="Buscá por dominio, chofer, unidad, marca, quién lo pidió…"
-          ayuda={<>Probá <code>tipo:placas</code>, <code>chofer:perez</code>, <code>unidad:24</code> o <code>-vacante</code> para excluir.</>}
+          ayuda={<><b>Cómo buscar</b>Varias palabras se suman. Para buscar en un solo dato: <code>tipo:placas</code>, <code>chofer:perez</code>, <code>unidad:24</code>, <code>estado:espera</code>. Para excluir, un guion adelante: <code>-vacante</code>.</>}
         />
         <div className="barra-filtros">
           <FiltroOpciones titulo="Estado" opciones={OPCIONES_ESTADO} valor={filtro.estado} conteos={conteoEstados}

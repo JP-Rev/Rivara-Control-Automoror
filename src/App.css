@@ -465,7 +465,6 @@ code { font-size: 12px; padding: 1px 6px; border-radius: 6px; background: var(--
 .rv-buscador:focus-within { box-shadow: 0 0 0 3px rgba(60, 90, 50, 0.16); }
 .buscador-limpiar { display: flex; flex: none; padding: 4px; border: 0; background: none; color: var(--rv-texto-3); border-radius: 50%; cursor: pointer; }
 .buscador-limpiar:hover { background: var(--rv-tint); }
-.buscador-ayuda { font-size: 12px; color: var(--rv-texto-4); padding-left: 4px; }
 
 /* Los filtros son menus desplegables, no fichas sueltas: el boton dice que
    esta elegido y adentro cada opcion trae cuantos quedarian. */
@@ -730,16 +729,72 @@ code { font-size: 12px; padding: 1px 6px; border-radius: 6px; background: var(--
   .tabla-flota td:nth-child(4) { display: none; }
 }
 
-.planillas { display: grid; grid-template-columns: repeat(auto-fit, minmax(260px, 1fr)); gap: 14px; align-items: start; }
-.planillas > .boton { justify-self: start; align-self: center; }
-.planilla { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
-.planilla-cabeza { display: flex; align-items: center; gap: 12px; min-width: 0; }
-.planilla-cabeza > div { display: flex; flex-direction: column; min-width: 0; }
-.planilla-cabeza strong { font-size: 15px; }
-.ruta { font-size: 12px; color: var(--rv-texto-4); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.planilla .nota.error { font-size: 12.5px; overflow-wrap: anywhere; }
-.avisos summary { font-size: 12.5px; font-weight: 600; color: var(--rv-bordo); cursor: pointer; }
-.avisos ul { margin: 6px 0 0; padding-left: 18px; font-size: 12.5px; color: var(--rv-texto-3); display: flex; flex-direction: column; gap: 3px; }
+/* Estado de las planillas: una linea por planilla y los botones al costado.
+   El detalle (archivo, avisos por fila) se despliega con "Ver detalles". */
+.planillas { display: flex; flex-direction: column; gap: 12px; }
+.planillas-resumen { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 26px; }
+.planilla { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.planilla-texto { display: flex; flex-direction: column; min-width: 0; line-height: 1.25; }
+.planilla-texto strong { font-size: 15px; }
+.planilla-texto small { font-size: 12.5px; color: var(--rv-texto-3); }
+.planilla--error .rv-disco { background: #FBEDED; color: var(--rv-bordo); }
+.planilla--error .planilla-texto small { color: var(--rv-bordo); font-weight: 600; }
+.planillas-acciones { display: flex; flex-wrap: wrap; gap: 8px; margin-left: auto; }
+.planillas .nota.error { font-size: 12.5px; overflow-wrap: anywhere; }
+.cuenta-aviso { min-width: 18px; padding: 0 6px; border-radius: var(--rv-r-pill); background: #FBEDED; color: var(--rv-bordo); font-size: 11px; font-weight: 800; text-align: center; }
+.plegar { transition: transform 0.15s ease; }
+.plegar--abierto { transform: rotate(180deg); }
+
+.planillas-detalle { display: grid; grid-template-columns: repeat(auto-fit, minmax(280px, 1fr)); gap: 12px; }
+.planilla-detalle { display: flex; flex-direction: column; gap: 8px; min-width: 0; padding: 14px 16px; border-radius: var(--rv-r-md); background: var(--rv-bg); font-size: 13px; }
+.planilla-detalle dl { margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 4px 12px; }
+.planilla-detalle dt { color: var(--rv-texto-4); font-weight: 600; }
+.planilla-detalle dd { margin: 0; color: var(--rv-texto-2); min-width: 0; }
+.ruta-larga { overflow-wrap: anywhere; }
+.avisos-lista { margin: 0; padding-left: 18px; display: flex; flex-direction: column; gap: 3px; color: var(--rv-texto-3); }
+@media (max-width: 720px) {
+  .planillas-acciones { margin-left: 0; }
+  .planilla-detalle dl { grid-template-columns: 1fr; }
+}
+
+/* ---- La "i" de informacion ---- */
+
+.info { position: relative; display: inline-flex; flex: none; }
+.info-boton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 32px;
+  height: 32px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  color: var(--rv-texto-4);
+  cursor: help;
+}
+.info-boton:hover, .info-boton--abierta { background: var(--rv-tint); color: var(--rv-verde-osc); }
+.info-globo {
+  position: absolute;
+  top: calc(100% + 6px);
+  z-index: 30;
+  width: max-content;
+  max-width: min(340px, calc(100vw - 40px));
+  padding: 12px 14px;
+  border-radius: var(--rv-r-md);
+  background: var(--rv-surface);
+  box-shadow: 0 12px 32px rgba(22, 30, 18, 0.22);
+  font-size: 13px;
+  font-weight: 400;
+  line-height: 1.6;
+  color: var(--rv-texto-2);
+  text-align: left;
+  white-space: normal;
+}
+.info-globo b { display: block; margin-bottom: 4px; color: var(--rv-texto); }
+.info-globo code { white-space: nowrap; }
+.info-globo--derecha { left: 0; }
+.info-globo--izquierda { right: 0; }
 
 /* ---- Formularios en ventana ---- */
 

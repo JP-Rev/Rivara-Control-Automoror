@@ -17,41 +17,74 @@ const ORDENES = {
 // El estado de las dos planillas de la red: cuando se leyeron, que trajeron,
 // y si fallaron, por que. Es lo primero que hay que mirar si "falta un
 // vehiculo".
-export function EstadoPlanillas({ sincronizacion, onLeer, leyendo, compacto }) {
+export function EstadoPlanillas({ sincronizacion, onLeer, leyendo }) {
+  // El detalle (ruta, archivo leido, avisos por fila) se mira cuando algo no
+  // cierra: plegado por defecto. Los errores no: si una planilla no se pudo
+  // leer, eso se ve siempre.
+  const [abierto, setAbierto] = useState(false)
+  const avisos = sincronizacion.reduce((n, s) => n + (s.ultimaLectura?.avisos?.length || 0), 0)
+
   return (
-    <div className={`planillas ${compacto ? 'planillas--compacto' : ''}`}>
-      {sincronizacion.map((s) => (
-        <div key={s.fuente} className={`planilla ${s.error ? 'planilla--error' : ''}`}>
-          <div className="planilla-cabeza">
+    <div className="planillas">
+      <div className="planillas-resumen">
+        {sincronizacion.map((s) => (
+          <div key={s.fuente} className={`planilla ${s.error ? 'planilla--error' : ''}`}>
             <span className="rv-disco rv-disco--sm"><Icono clave={s.fuente === 'camiones' ? 'camion' : 'planilla'} /></span>
-            <div>
+            <div className="planilla-texto">
               <strong>{s.nombre}</strong>
-              <small className="ruta" title={s.ruta}>{s.ultimaLectura?.archivo || s.ruta}</small>
+              <small>
+                {s.ultimaLectura
+                  ? <>{s.ultimaLectura.leidos} dominios · leída {haceCuanto(s.ultimaLectura.verificadoEn || s.ultimaLectura.en)}</>
+                  : s.error ? 'No se pudo leer' : 'Todavía no se leyó'}
+              </small>
             </div>
           </div>
-          {s.error && <p className="nota error">{s.error.mensaje}</p>}
-          {s.ultimaLectura ? (
-            <p className="apagado">
-              {s.ultimaLectura.leidos} dominios · leída {haceCuanto(s.ultimaLectura.en)}
-              {s.ultimaLectura.verificadoEn && s.ultimaLectura.verificadoEn !== s.ultimaLectura.en && <> · sin cambios {haceCuanto(s.ultimaLectura.verificadoEn)}</>}
-              {(s.ultimaLectura.nuevos > 0 || s.ultimaLectura.actualizados > 0) && (
-                <> · {s.ultimaLectura.nuevos} nuevos, {s.ultimaLectura.actualizados} actualizados</>
-              )}
-            </p>
-          ) : !s.error && <p className="apagado">Todavía no se leyó.</p>}
-          {s.ultimaLectura?.mensaje && <p className="apagado">{s.ultimaLectura.mensaje}</p>}
-          {!compacto && s.ultimaLectura?.avisos?.length > 0 && (
-            <details className="avisos">
-              <summary>{s.ultimaLectura.avisos.length} {s.ultimaLectura.avisos.length === 1 ? 'fila no se pudo leer bien' : 'filas no se pudieron leer bien'}</summary>
-              <ul>{s.ultimaLectura.avisos.map((a) => <li key={a}>{a}</li>)}</ul>
-            </details>
+        ))}
+        <div className="planillas-acciones">
+          <button type="button" className="boton boton-suave boton-chico" aria-expanded={abierto} onClick={() => setAbierto((a) => !a)}>
+            {abierto ? 'Ocultar detalles' : 'Ver detalles'}
+            {!abierto && avisos > 0 && <span className="cuenta-aviso">{avisos}</span>}
+            <svg className={`plegar ${abierto ? 'plegar--abierto' : ''}`} width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" aria-hidden="true"><path d="m6 9 6 6 6-6" /></svg>
+          </button>
+          {onLeer && (
+            <button type="button" className="boton boton-suave boton-chico" disabled={leyendo} onClick={onLeer}>
+              <Icono clave="refrescar" tamano={16} /> {leyendo ? 'Leyendo la red…' : 'Leer ahora'}
+            </button>
           )}
         </div>
+      </div>
+
+      {sincronizacion.filter((s) => s.error).map((s) => (
+        <p key={s.fuente} className="nota error"><b>{s.nombre}:</b> {s.error.mensaje}</p>
       ))}
-      {onLeer && (
-        <button type="button" className="boton boton-suave boton-chico" disabled={leyendo} onClick={onLeer}>
-          <Icono clave="refrescar" tamano={16} /> {leyendo ? 'Leyendo la red…' : 'Leer las planillas ahora'}
-        </button>
+
+      {abierto && (
+        <div className="planillas-detalle">
+          {sincronizacion.map((s) => (
+            <div key={s.fuente} className="planilla-detalle">
+              <strong>{s.nombre}</strong>
+              <dl>
+                <dt>Archivo</dt><dd className="ruta-larga">{s.ultimaLectura?.archivo || s.ruta}</dd>
+                {s.ultimaLectura && (
+                  <>
+                    <dt>Última lectura</dt>
+                    <dd>{haceCuanto(s.ultimaLectura.en)}: {s.ultimaLectura.nuevos} nuevos, {s.ultimaLectura.actualizados} actualizados</dd>
+                    {s.ultimaLectura.verificadoEn && s.ultimaLectura.verificadoEn !== s.ultimaLectura.en && (
+                      <><dt>Última verificación</dt><dd>{haceCuanto(s.ultimaLectura.verificadoEn)}, sin cambios</dd></>
+                    )}
+                  </>
+                )}
+              </dl>
+              {s.ultimaLectura?.mensaje && <p className="apagado">{s.ultimaLectura.mensaje}</p>}
+              {s.ultimaLectura?.avisos?.length > 0 && (
+                <>
+                  <p className="falta">{s.ultimaLectura.avisos.length} {s.ultimaLectura.avisos.length === 1 ? 'fila no se pudo leer bien' : 'filas no se pudieron leer bien'}:</p>
+                  <ul className="avisos-lista">{s.ultimaLectura.avisos.map((a) => <li key={a}>{a}</li>)}</ul>
+                </>
+              )}
+            </div>
+          ))}
+        </div>
       )}
     </div>
   )
@@ -117,7 +150,7 @@ export default function Flota({ vehiculos, sincronizacion, catalogo, usuario, on
           <div className="filtros">
             <Buscador valor={filtro.q} onCambio={(q) => set({ q })}
                       placeholder="Buscá por dominio, unidad, chofer, marca, chasis, motor…"
-                      ayuda={<>Probá <code>unidad:24</code>, <code>chofer:vacante</code>, <code>año:2019</code>, <code>sector:campos</code> o <code>-vendida</code>.</>} />
+                      ayuda={<><b>Cómo buscar</b>Varias palabras se suman. Para buscar en un solo dato: <code>unidad:24</code>, <code>chofer:vacante</code>, <code>año:2019</code>, <code>sector:campos</code>, <code>chasis:8avz</code>. Para excluir, un guion adelante: <code>-vendida</code>.</>} />
             <div className="barra-filtros">
               <FiltroOpciones titulo="Tipo" opciones={catalogo.categorias} valor={filtro.categoria}
                               conteos={conteos.categoria} onCambio={(categoria) => set({ categoria })} />
