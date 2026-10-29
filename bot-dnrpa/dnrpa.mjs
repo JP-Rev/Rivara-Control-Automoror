@@ -116,6 +116,7 @@ export function reglas(d, ruta) {
       R(null, '^(cuit|cuil)', c.cuit),
       R(null, '^ocupacion', c.ocupacion),
       R(null, '^porcentaje', '100'),
+      ...vehiculo,
     ]
   }
   if (/vendedor/.test(ruta)) {
@@ -129,6 +130,8 @@ export function reglas(d, ruta) {
       R(null, '^apellido', v.apellido),
       R(null, '^estado civil', v.estadoCivil, 'select'),
       R(null, '^porcentaje', '100'),
+      // La pantalla del dominio y el chasis tambien es #!/vendedores.
+      ...vehiculo,
     ]
   }
   return vehiculo
@@ -327,6 +330,9 @@ async function main() {
     // Sin la barra "un software automatizado controla este navegador" y sin
     // avisarle al sitio que hay un robot: el captcha lo resuelve una persona.
     ignoreDefaultArgs: ['--enable-automation'],
+    // Con el sandbox normal del navegador: sin esto Playwright agrega
+    // --no-sandbox y Edge muestra un cartel de advertencia.
+    chromiumSandbox: true,
   }
   if (opciones.ejecutable) lanzar.executablePath = opciones.ejecutable
   else lanzar.channel = opciones.navegador === 'chrome' ? 'chrome' : 'msedge'
