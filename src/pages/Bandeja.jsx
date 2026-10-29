@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react'
-import { Buscador, FiltroMarcas, FiltroOpciones, Resumen } from '../componentes/Filtros.jsx'
+import { Buscador, FiltroMarcas, FiltroOpciones, FiltroOrden, Resumen } from '../componentes/Filtros.jsx'
 import { ESTADOS_VISIBLES, EstadoChip, claveVisible, desdeEstado } from '../componentes/Estado.jsx'
 import { resumenVehiculo } from '../componentes/DominioInput.jsx'
 import { aFecha, haceCuanto } from '../formato.js'
@@ -21,6 +21,8 @@ const ORDENES = {
   estado: (t) => ESTADOS_VISIBLES.findIndex((e) => e.clave === claveVisible(t)),
   antiguedad: (t) => -(aFecha(desdeEstado(t))?.getTime() || 0),
 }
+
+const ORDENES_BANDEJA = [['movimiento', 'Último movimiento'], ['antiguedad', 'Más tiempo en el estado'], ['numero', 'Número'], ['dominio', 'Dominio'], ['estado', 'Estado']]
 
 export default function Bandeja({ tramites, catalogo, usuario, onAbrir, onNuevo, onTomar, ocupado }) {
   const [filtro, setFiltro] = useRecordado('automotor.bandeja', INICIAL)
@@ -104,6 +106,8 @@ export default function Bandeja({ tramites, catalogo, usuario, onAbrir, onNuevo,
               ...(usuario.esGestor ? [{ clave: 'conmigo', nombre: 'Tomados por mí', activa: filtro.conmigo, conteo: conteos.conmigo }] : []),
             ]}
             onCambio={(clave, si) => set({ [clave]: si })} />
+          <FiltroOrden opciones={ORDENES_BANDEJA} orden={orden} onCambio={cambiarOrden}
+                       onSentido={(desc) => setOrden((o) => ({ ...o, desc }))} />
         </div>
         <Resumen mostrados={lista.length} total={tramites.length} nombre="trámites"
                  hayFiltros={hayFiltros && !(filtro.estado === 'ABIERTOS' && !filtro.q && !filtro.tipo && !filtro.mios && !filtro.conmigo)}
@@ -117,14 +121,6 @@ export default function Bandeja({ tramites, catalogo, usuario, onAbrir, onNuevo,
         </div>
       ) : (
         <>
-          <div className="orden" role="group" aria-label="Ordenar">
-            <span className="fichas-titulo">Ordenar por</span>
-            {[['movimiento', 'Último movimiento'], ['antiguedad', 'Más tiempo en el estado'], ['numero', 'Número'], ['dominio', 'Dominio'], ['estado', 'Estado']].map(([c, n]) => (
-              <button key={c} type="button" className={`orden-btn ${orden.campo === c ? 'activo' : ''}`} onClick={() => cambiarOrden(c)}>
-                {n}{orden.campo === c && (orden.desc ? ' ↓' : ' ↑')}
-              </button>
-            ))}
-          </div>
           <ul className="filas">
             {lista.map((t) => (
               <li key={t.id} className="fila-tramite">

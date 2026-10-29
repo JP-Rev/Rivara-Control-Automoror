@@ -42,7 +42,7 @@ export function Buscador({ valor, onCambio, placeholder, ayuda }) {
 
 // Menu desplegable generico: se cierra con Escape, con un clic afuera y al
 // elegir (en los de una sola opcion).
-function Desplegable({ etiqueta, activo, children, ancho }) {
+function Desplegable({ etiqueta, activo, children, ancho, clase = '' }) {
   const [abierto, setAbierto] = useState(false)
   const caja = useRef(null)
   const id = useId()
@@ -61,7 +61,7 @@ function Desplegable({ etiqueta, activo, children, ancho }) {
   }, [abierto])
 
   return (
-    <div className="filtro" ref={caja}>
+    <div className={`filtro ${clase}`} ref={caja}>
       <button type="button" className={`filtro-boton ${activo ? 'filtro-boton--activo' : ''}`}
               aria-expanded={abierto} aria-controls={id} onClick={() => setAbierto((a) => !a)}>
         {etiqueta}
@@ -122,6 +122,41 @@ export function FiltroOpciones({ titulo, opciones, valor, conteos, onCambio, tod
             })}
             {!visibles.length && <li className="filtro-vacio">Nada coincide con «{busqueda}»</li>}
           </ul>
+        </>
+      )}
+    </Desplegable>
+  )
+}
+
+/**
+ * Orden de una lista, en un boton como los filtros (y no una barra suelta).
+ * Elegir un criterio lo aplica con su sentido habitual; el sentido se cambia
+ * abajo del menu.
+ * @param opciones  [[clave, nombre]]
+ * @param orden     { campo, desc }
+ */
+export function FiltroOrden({ opciones, orden, onCambio, onSentido }) {
+  const actual = opciones.find(([c]) => c === orden.campo)?.[1] || ''
+  return (
+    <Desplegable clase="filtro--orden" etiqueta={<><span className="filtro-titulo">Ordenar:</span> {actual} {orden.desc ? '↓' : '↑'}</>}>
+      {(cerrar) => (
+        <>
+          <ul role="listbox" aria-label="Ordenar por">
+            {opciones.map(([c, n]) => (
+              <li key={c}>
+                <button type="button" role="option" aria-selected={orden.campo === c} className={orden.campo === c ? 'elegida' : ''}
+                        onClick={() => { if (orden.campo !== c) onCambio(c); cerrar() }}>
+                  <span>{n}</span>
+                </button>
+              </li>
+            ))}
+          </ul>
+          <div className="filtro-sentido" role="group" aria-label="Sentido">
+            {[[true, '↓ Descendente'], [false, '↑ Ascendente']].map(([desc, n]) => (
+              <button key={n} type="button" className={orden.desc === desc ? 'elegida' : ''} aria-pressed={orden.desc === desc}
+                      onClick={() => { onSentido(desc); cerrar() }}>{n}</button>
+            ))}
+          </div>
         </>
       )}
     </Desplegable>
