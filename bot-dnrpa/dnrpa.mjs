@@ -2,9 +2,11 @@
 //
 // Abre Edge en la PC (no en el servidor: el captcha y los botones los aprieta
 // una persona), y en cada pantalla del tramite COMPLETA LOS CAMPOS con los
-// datos que toma de la app (los ya cargados en el tramite). No aprieta ningun boton: ni
-// CONFIRMAR, ni SIGUIENTE, ni GUARDAR, ni los SI/NO de los carteles. Se queda
-// mirando: cuando la pagina cambia de pantalla, completa la nueva.
+// datos que toma de la app (los ya cargados en el tramite). Solo aprieta los
+// botones del camino desde el inicio hasta "Datos del Auto/Moto" (ver
+// navegacionEnPagina); desde ahi ninguno: ni CONFIRMAR, ni SIGUIENTE, ni
+// GUARDAR, ni los SI/NO de los carteles. Se queda mirando: cuando la pagina
+// cambia de pantalla, completa la nueva.
 //
 // Los campos se buscan por su etiqueta en pantalla ("Nombre", "Estado Civil",
 // "Partido/Dpto"...) y por el titulo de la seccion en la que estan ("Datos de
@@ -24,6 +26,7 @@
 //   --navegador=chrome   usa Chrome en lugar de Edge
 //   --ejecutable=RUTA    un Chromium cualquiera (pruebas)
 //   --url=URL            otra direccion de inicio (pruebas)
+//   --sin-sandbox        Chromium sin sandbox (pruebas en Linux como root)
 
 import fs from 'node:fs'
 import os from 'node:os'
@@ -218,6 +221,68 @@ export function planEnPagina({ reglas }) {
   return plan
 }
 
+// Camino desde el inicio del sitio hasta "Datos del Auto/Moto". Son los
+// UNICOS botones que aprieta el bot, y solo hasta llegar al dominio:
+//   1. Inicio: la tarjeta "Transferencia digital"
+//   2. "Aclaracion importante": SIGUIENTE
+//   3. "Iniciar o Continuar una Precarga": INICIAR O CONTINUAR
+//   4. "Completar datos de ambas partes": INICIAR
+// Devuelve el paso que toca en la pantalla actual (y marca con
+// data-rivara-clic lo que hay que apretar), 'listo' si ya esta el campo del
+// dominio, o null si no reconoce la pantalla.
+export function navegacionEnPagina() {
+  const norm = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase().replace(/[^a-z0-9]+/g, ' ').trim()
+  const visible = (el) => {
+    const r = el.getBoundingClientRect()
+    const st = getComputedStyle(el)
+    return r.width > 0 && r.height > 0 && st.visibility !== 'hidden' && st.display !== 'none'
+  }
+  const texto = (el) => norm(el.innerText || el.textContent)
+  const marcar = (el, paso) => {
+    document.querySelectorAll('[data-rivara-clic]').forEach((x) => x.removeAttribute('data-rivara-clic'))
+    el.setAttribute('data-rivara-clic', paso)
+    return paso
+  }
+  const clicables = () => [...document.querySelectorAll('button, a, input[type=button], input[type=submit], [ng-click], [role=button]')].filter(visible)
+  const boton = (re) => clicables().find((e) => re.test(texto(e) || norm(e.value)))
+  // El elemento visible mas chico cuyo texto cumple todo lo pedido.
+  const elemento = (...res) => [...document.querySelectorAll('body *')]
+    .filter((e) => visible(e) && res.every((re) => re.test(texto(e))))
+    .sort((a, b) => texto(a).length - texto(b).length)[0]
+
+  const dominio = [...document.querySelectorAll('input')].find((e) => visible(e) && /dominio/i.test(e.placeholder || ''))
+  if (dominio) return 'listo'
+
+  // 4. La tarjeta "Completar datos de ambas partes": su INICIAR.
+  const ambas = elemento(/^completar datos de ambas partes$/)
+  if (ambas) {
+    let n = ambas
+    for (let i = 0; i < 6 && n.parentElement; i++) {
+      n = n.parentElement
+      const b = [...n.querySelectorAll('button, a, [ng-click]')].filter(visible).find((e) => texto(e) === 'iniciar')
+      if (b) return marcar(b, 'ambas partes: INICIAR')
+    }
+  }
+  // 3. Iniciar o continuar una precarga.
+  const precarga = boton(/^iniciar o continuar$/)
+  if (precarga) return marcar(precarga, 'INICIAR O CONTINUAR')
+  // 2. Aclaracion importante: SIGUIENTE.
+  if (elemento(/aclaracion importante/)) {
+    const siguiente = boton(/^siguiente$/)
+    if (siguiente) return marcar(siguiente, 'SIGUIENTE')
+  }
+  // 1. Inicio: la tarjeta de Transferencia digital (todo el recuadro es el
+  // enlace; si no, se aprieta el titulo).
+  const tarjeta = elemento(/transferencia digital/, /precarga/)
+  if (tarjeta) {
+    const destino = tarjeta.closest('a, button, [ng-click], [ui-sref], [href]') ||
+      [...tarjeta.querySelectorAll('a, button, [ng-click], [ui-sref], [href]')].find(visible) || tarjeta
+    return marcar(destino, 'Transferencia digital')
+  }
+  return null
+}
+
 // Cartel chico arriba a la derecha: que hizo el bot en esta pantalla.
 function cartelEnPagina({ titulo, lineas }) {
   let c = document.getElementById('rivara-bot')
@@ -243,6 +308,23 @@ function cartelEnPagina({ titulo, lineas }) {
     p.style.marginTop = '4px'
     c.appendChild(p)
   }
+}
+
+/* ------------------------------ navegar ------------------------------ */
+
+// Aprieta los botones del camino hasta "Datos del Auto/Moto" (ver
+// navegacionEnPagina). Devuelve true cuando ya esta en esa pantalla.
+export async function navegarAlDominio(page, recientes) {
+  const paso = await page.evaluate(navegacionEnPagina).catch(() => null)
+  if (paso === 'listo') return true
+  if (!paso) return false
+  // El mismo paso no se repite enseguida: da tiempo a que cambie la pantalla.
+  const antes = recientes.get(paso)
+  if (antes && Date.now() - antes < 4000) return false
+  recientes.set(paso, Date.now())
+  console.log(`Aprieto: ${paso}`)
+  await page.locator('[data-rivara-clic]').first().click({ timeout: 5000 }).catch((e) => console.log(`  no pude: ${e.message.split('\n')[0]}`))
+  return false
 }
 
 /* ------------------------------ completar ------------------------------ */
@@ -332,7 +414,8 @@ async function main() {
     ignoreDefaultArgs: ['--enable-automation'],
     // Con el sandbox normal del navegador: sin esto Playwright agrega
     // --no-sandbox y Edge muestra un cartel de advertencia.
-    chromiumSandbox: true,
+    // (--sin-sandbox: solo para pruebas en Linux como root, donde no arranca).
+    chromiumSandbox: !opciones['sin-sandbox'],
   }
   if (opciones.ejecutable) lanzar.executablePath = opciones.ejecutable
   else lanzar.channel = opciones.navegador === 'chrome' ? 'chrome' : 'msedge'
@@ -340,19 +423,23 @@ async function main() {
   const ctx = await pw.chromium.launchPersistentContext(perfil, lanzar)
   const page = ctx.pages()[0] || await ctx.newPage()
   await page.goto(opciones.url || URL_DNRPA)
-  console.log('Navegador abierto. Entrá a «Transferencia Digital» y seguí con los botones: el bot completa cada pantalla.')
+  console.log('Navegador abierto. El bot entra solo hasta «Datos del Auto/Moto» y carga dominio y chasis; desde ahí seguís vos con los botones.')
   console.log('Para terminar, cerrá el navegador.')
 
   let cerrado = false
-  ctx.on('close', () => { cerrado = true })
+  ctx.on('close', () => { cerrado = true; console.log('Navegador cerrado.') })
 
   // Se mira cada pestaña del sitio; cada pantalla nueva (cambio de #!/ruta o
   // campos nuevos) se completa. Los campos ya tocados quedan marcados.
+  // Primero se navega solo hasta el dominio; despues, ningun boton mas.
+  let enDominio = false
+  const recientes = new Map()
   while (!cerrado) {
     for (const p of ctx.pages()) {
       if (p.isClosed()) continue
       const url = p.url()
       if (!/jus\.gov\.ar|^file:|localhost|127\.0\.0\.1/.test(url)) continue
+      if (!enDominio) enDominio = await navegarAlDominio(p, recientes)
       const r = await completarPantalla(p, datos).catch(() => null)
       if (!r || (!r.hechos.length && !r.sinDato.length && !r.sinOpcion.length)) continue
       const lineas = []
@@ -368,7 +455,8 @@ async function main() {
 
 // Como programa (no cuando lo importa una prueba).
 if (process.argv[1] && import.meta.url === pathToFileURL(path.resolve(process.argv[1])).href) main().catch((e) => {
-  if (/closed|Target page|has been closed/i.test(e.message)) process.exit(0)
+  // Cerrar el navegador a mitad de una accion no es un error.
+  if (/Target page, context or browser has been closed|Browser has been closed/i.test(e.message)) process.exit(0)
   console.error(`\nNo se pudo seguir: ${e.message}`)
   if (/Executable doesn't exist|msedge|chrome/i.test(e.message)) {
     console.error('No se encontró Edge. Probá con --navegador=chrome si usás Chrome.')

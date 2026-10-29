@@ -172,8 +172,11 @@ trámite. No se baja ningún archivo.
   uso que vence a los 10 minutos** (`POST /api/tramites/:id/dnrpa/enlace`); el
   bot lo canjea en `GET /api/dnrpa/datos/:clave`, sin sesión. Las claves viven
   en memoria: un reinicio las anula.
-- **Solo completa campos.** Nunca aprieta CONFIRMAR, SIGUIENTE, GUARDAR, los
-  SÍ/NO de los carteles ni el captcha. Mira la página y, cada vez que cambia
+- **Entra solo hasta el dominio y después solo completa campos.** Aprieta
+  únicamente el camino desde el inicio: tarjeta «Transferencia digital» →
+  SIGUIENTE → INICIAR O CONTINUAR → INICIAR de «Completar datos de ambas
+  partes». Desde «Datos del Auto/Moto» nunca aprieta CONFIRMAR, SIGUIENTE,
+  GUARDAR, los SÍ/NO de los carteles ni el captcha. Mira la página y, cada vez que cambia
   de pantalla, completa la nueva: dominio y últimos 7 del chasis; vendedor
   (documento, CUIT, nombre, estado civil al adquirir); comprador (documento,
   sexo, estado civil, nacionalidad, nacimiento, CUIL, ocupación, cónyuge,

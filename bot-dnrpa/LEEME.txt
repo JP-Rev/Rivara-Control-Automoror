@@ -2,9 +2,13 @@ BOT DE LA TRANSFERENCIA DIGITAL DEL DNRPA
 =========================================
 
 Completa los campos del sitio https://www2.jus.gov.ar/dnrpa-site/ con los
-datos del tramite cargados en la app (vendedor, comprador, vehiculo). NO
-aprieta ningun boton: CONFIRMAR, SIGUIENTE, GUARDAR, los SI/NO de los
-carteles y el captcha los hace una persona.
+datos del tramite cargados en la app (vendedor, comprador, vehiculo).
+
+Solo aprieta los botones del camino hasta "Datos del Auto/Moto": la tarjeta
+Transferencia digital, SIGUIENTE, INICIAR O CONTINUAR y el INICIAR de
+"Completar datos de ambas partes". Ahi carga dominio y chasis y para: desde
+ahi CONFIRMAR, SIGUIENTE, GUARDAR, los SI/NO de los carteles y el captcha los
+hace una persona.
 
 Una sola vez en cada PC
 -----------------------
@@ -21,9 +25,10 @@ En cada transferencia
    El navegador pregunta si abre "Cargar DNRPA": aceptar (se puede tildar
    que no vuelva a preguntar). El bot toma los datos del tramite de la app:
    no hay que bajar nada.
-2. Se abre Edge en el sitio del DNRPA. Entrar a Transferencia Digital y
-   seguir con los botones: en cada pantalla el bot completa los campos y
-   muestra un cartel verde arriba a la derecha con lo que hizo.
+2. Se abre Edge en el sitio del DNRPA y el bot entra solo hasta "Datos del
+   Auto/Moto", con dominio y chasis cargados. Desde ahi se sigue con los
+   botones: en cada pantalla el bot completa los campos y muestra un cartel
+   verde arriba a la derecha con lo que hizo.
 3. Revisar todo antes de cada GUARDAR / CONFIRMAR. Para terminar, cerrar el
    navegador.
 
