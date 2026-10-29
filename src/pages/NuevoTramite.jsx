@@ -4,6 +4,7 @@ import DominioInput from '../componentes/DominioInput.jsx'
 import { EstadoChip } from '../componentes/Estado.jsx'
 import Modal from '../componentes/Modal.jsx'
 import Selector from '../componentes/Selector.jsx'
+import SiNo, { VOLUNTAD_DE_PAGO } from '../componentes/SiNo.jsx'
 
 // Alta de un tramite. Lo minimo es el dominio y que hay que hacer: el resto
 // lo completa quien lo gestiona. Los dos campos se buscan escribiendo: el
@@ -15,6 +16,8 @@ export default function NuevoTramite({ catalogo, vehiculos, tramites = [], domin
   const [tipo, setTipo] = useState('REPOSICION_PLACAS')
   const [motivo, setMotivo] = useState('')
   const [observaciones, setObservaciones] = useState('')
+  // Transferencias: voluntad de pago (Disp. 142/2024), sale en el Anexo 08 D.
+  const [pago, setPago] = useState({ sellos: '', patentes: '', infracciones: '' })
   const [error, setError] = useState('')
   const [enviando, setEnviando] = useState(false)
 
@@ -33,7 +36,10 @@ export default function NuevoTramite({ catalogo, vehiculos, tramites = [], domin
     if (!tipo) return setError('Elegí qué trámite hay que hacer.')
     setEnviando(true)
     try {
-      const { tramite } = await api.crearTramite({ dominio, tipo, motivo: def?.motivo ? motivo : '', observaciones })
+      const { tramite } = await api.crearTramite({
+        dominio, tipo, motivo: def?.motivo ? motivo : '', observaciones,
+        ...(def?.anexo08d ? { transferencia: pago } : {}),
+      })
       onCreado(tramite)
     } catch (err) {
       setError(err.message)
@@ -91,6 +97,17 @@ export default function NuevoTramite({ catalogo, vehiculos, tramites = [], domin
           <textarea rows={3} value={observaciones} onChange={(e) => setObservaciones(e.target.value)}
                     placeholder={tipo === 'OTRO' ? 'Contá qué trámite hay que hacer' : 'Comprador, urgencia, dónde está la documentación…'} />
         </label>
+
+        {def?.anexo08d && (
+          <fieldset className="opciones">
+            <legend>Opta abonar <span className="apagado">(Disp. 142/2024 · sale en el Anexo 08 D; si no lo sabés, dejalo sin marcar)</span></legend>
+            <div className="voluntad">
+              {VOLUNTAD_DE_PAGO.map(([k, nombre]) => (
+                <SiNo key={k} etiqueta={nombre} valor={pago[k]} onCambio={(v) => setPago((p) => ({ ...p, [k]: v }))} />
+              ))}
+            </div>
+          </fieldset>
+        )}
 
         {error && <p className="error" role="alert">{error}</p>}
 

@@ -4,6 +4,7 @@ import logo from './assets/logo-rivara.png'
 import { AuthProvider, useAuth } from './auth/AuthContext.jsx'
 import { Icono } from './iconos.jsx'
 import Bandeja from './pages/Bandeja.jsx'
+import Anexo08d from './pages/Anexo08d.jsx'
 import Ddjj from './pages/Ddjj.jsx'
 import DetalleTramite from './pages/DetalleTramite.jsx'
 import Flota from './pages/Flota.jsx'
@@ -65,6 +66,7 @@ function App() {
   const [ddjj, setDdjj] = useState(null)          // tramite
   const [vehiculo, setVehiculo] = useState(null)  // objeto, o { nuevo: true, dominio? }
   const [leerDoc, setLeerDoc] = useState(null)    // { vehiculo? }
+  const [anexo, setAnexo] = useState(null)        // tramite
   // Sube cuando algo de afuera cambia el tramite abierto (la DDJJ, los datos
   // del vehiculo): el detalle se vuelve a montar y relee todo.
   const [versionDetalle, setVersionDetalle] = useState(0)
@@ -365,7 +367,8 @@ function App() {
                         onBorrado={(id) => { setTramites((l) => l.filter((t) => t.id !== id)); setDetalle(null) }}
                         onCerrar={() => setDetalle(null)}
                         onVehiculo={(v) => setVehiculo(v)}
-                        onDdjj={(t) => setDdjj(t)} />
+                        onDdjj={(t) => setDdjj(t)}
+                        onAnexo08d={(t) => setAnexo(t)} />
       )}
       {vehiculo && catalogo && (
         <Vehiculo key={vehiculo.nuevo ? 'nuevo' : vehiculo.id} vehiculo={vehiculo}
@@ -384,6 +387,16 @@ function App() {
         <LeerDocumento vehiculos={vehiculos} vehiculoInicial={leerDoc.vehiculo} usuario={usuario} catalogo={catalogo}
                        onAplicado={() => { cargarVehiculos(); cargarCatalogo(); cargarTramites() }}
                        onCerrar={() => setLeerDoc(null)} />
+      )}
+      {anexo && catalogo && (
+        <Anexo08d tramite={anexo} catalogo={catalogo} usuario={usuario}
+                  onCerrar={() => setAnexo(null)}
+                  onListo={() => {
+                    setAnexo(null)
+                    setVersionDetalle((n) => n + 1)
+                    cargarVehiculos()
+                    cargarTramites()
+                  }} />
       )}
       {ddjj && catalogo && (
         <Ddjj tramite={ddjj} catalogo={catalogo} usuario={usuario}

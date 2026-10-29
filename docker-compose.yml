@@ -31,6 +31,7 @@ services:
       SYNC_MINUTOS: ${SYNC_MINUTOS:-10}
       DDJJ_LUGAR: ${DDJJ_LUGAR:-Buenos Aires}
       DDJJ_SECCIONAL: ${DDJJ_SECCIONAL:-}
+      DDJJ_REGISTRO: ${DDJJ_REGISTRO:-}
     # Disco de datos del contrato (§7): el DIRECTORIO, nunca el .db suelto.
     volumes:
       - /storage/automotor:/data

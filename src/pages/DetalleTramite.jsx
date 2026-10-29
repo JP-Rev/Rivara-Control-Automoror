@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import * as api from '../api.js'
 import { EstadoChip } from '../componentes/Estado.jsx'
 import Comprador from './Comprador.jsx'
+import SiNo, { VOLUNTAD_DE_PAGO } from '../componentes/SiNo.jsx'
 import { resumenVehiculo } from '../componentes/DominioInput.jsx'
 import Modal from '../componentes/Modal.jsx'
 import Selector from '../componentes/Selector.jsx'
@@ -17,7 +18,7 @@ const ACCIONES_EVENTO = {
   DDJJ: 'generó la DDJJ de extravío',
 }
 
-export default function DetalleTramite({ id, catalogo, usuario, onCambio, onBorrado, onCerrar, onVehiculo, onDdjj }) {
+export default function DetalleTramite({ id, catalogo, usuario, onCambio, onBorrado, onCerrar, onVehiculo, onDdjj, onAnexo08d }) {
   const [datos, setDatos] = useState(null)
   const [error, setError] = useState('')
   const [ocupado, setOcupado] = useState(false)
@@ -203,6 +204,28 @@ export default function DetalleTramite({ id, catalogo, usuario, onCambio, onBorr
             ) : (
               <p className="apagado">Todavía no hay datos del comprador. Se cargan sacándole una foto al DNI.</p>
             )}
+          </section>
+        )}
+
+        {/* ---- Transferencia: voluntad de pago y Anexo 08 D ---- */}
+        {def?.anexo08d && (
+          <section className="detalle-bloque">
+            <div className="fila-acciones">
+              <h4 className="rv-eyebrow">Anexo 08 D</h4>
+              {puedeCargarComprador && (
+                <button type="button" className="boton boton-chico" onClick={() => onAnexo08d(t)}>
+                  <Icono clave="impresora" tamano={16} /> {t.transferencia?.anexo ? 'Volver a imprimir el Anexo 08 D' : 'Imprimir el Anexo 08 D'}
+                </button>
+              )}
+            </div>
+            {t.transferencia?.solicitud08d && <p className="apagado">Solicitud tipo 08 D Nº <b>{t.transferencia.solicitud08d}</b></p>}
+            <p className="apagado">Opta abonar (Disp. 142/2024):</p>
+            <div className="voluntad voluntad--detalle">
+              {VOLUNTAD_DE_PAGO.map(([k, nombre]) => (
+                <SiNo key={k} etiqueta={nombre} valor={t.transferencia?.[k] || ''} deshabilitado={ocupado || !puedeCargarComprador}
+                      onCambio={(v) => hacer(() => api.editarTramite(t.id, { transferencia: { [k]: v } }))} />
+              ))}
+            </div>
           </section>
         )}
 

@@ -118,6 +118,10 @@ export function migrate() {
       -- Transferencias y denuncias de venta: datos del comprador (JSON).
       -- Son datos personales: no se guarda la foto del DNI, solo esto.
       comprador      TEXT,
+      -- Transferencias: Nº de solicitud 08 D, la voluntad de pago de la Disp.
+      -- 142/2024 (sellos, patentes, infracciones: SI/NO) y lo ultimo que se
+      -- imprimio en el Anexo 08 D (JSON).
+      transferencia  TEXT,
       creado_en      TEXT NOT NULL DEFAULT (datetime('now')),
       actualizado_en TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -169,4 +173,5 @@ export function migrate() {
   }
   const deTramites = new Set(db.prepare('PRAGMA table_info(tramites)').all().map((c) => c.name))
   if (!deTramites.has('comprador')) db.exec('ALTER TABLE tramites ADD COLUMN comprador TEXT')
+  if (!deTramites.has('transferencia')) db.exec('ALTER TABLE tramites ADD COLUMN transferencia TEXT')
 }

@@ -1039,3 +1039,16 @@ input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; a
 .lector-dni .apagado { font-size: 13px; }
 .comprador { display: flex; flex-direction: column; gap: 3px; font-size: 14.5px; }
 .comprador .pastilla { margin-left: 8px; vertical-align: middle; }
+
+/* ---- Sí / No ---- */
+
+.voluntad { display: flex; flex-direction: column; gap: 6px; }
+.sino { display: flex; align-items: center; justify-content: space-between; gap: 12px; padding: 6px 0; }
+.sino + .sino { border-top: 1px solid var(--rv-tint-borde); }
+.sino-etiqueta { font-size: 14px; font-weight: 600; color: var(--rv-texto); }
+.sino-botones { display: inline-flex; gap: 3px; padding: 3px; border-radius: var(--rv-r-pill); background: var(--rv-bg); }
+.sino-boton { min-width: 52px; min-height: 32px; padding: 4px 14px; border: 0; border-radius: var(--rv-r-pill); background: none; font: inherit; font-size: 13.5px; font-weight: 700; color: var(--rv-texto-3); cursor: pointer; }
+.sino-boton:hover:not(:disabled) { color: var(--rv-texto); background: var(--rv-surface); }
+.sino-boton--activo, .sino-boton--activo:hover:not(:disabled) { background: var(--rv-verde); color: #fff; box-shadow: var(--rv-sombra-accion); }
+.sino-boton:disabled { opacity: 0.6; cursor: default; }
+.voluntad--detalle { max-width: 380px; }

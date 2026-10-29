@@ -36,6 +36,8 @@ RUN apt-get update \
 COPY --from=deps /app/node_modules ./server/node_modules
 COPY server/package.json ./server/package.json
 COPY server/src ./server/src
+# Formularios en blanco sobre los que se escribe (Anexo 08 D).
+COPY server/plantillas ./server/plantillas
 COPY --from=build /app/dist ./dist
 ENV PUBLIC_DIR=/app/dist
 EXPOSE 80

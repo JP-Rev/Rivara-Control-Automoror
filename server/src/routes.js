@@ -11,6 +11,7 @@ import {
 } from './catalogo.js'
 import { dominioValido, normalizarDominio } from './dominio.js'
 import { DOCUMENTOS_DDJJ, generarDDJJ } from './ddjj.js'
+import { generarAnexo08D } from './anexo08d.js'
 import { extraerTexto, extraerTextosTarjeta, interpretar } from './documentos.js'
 import { interpretarDni } from './dni.js'
 import { CAMPOS_PLANILLA, estadoSincronizacion, sincronizar } from './sincronizar.js'
@@ -116,6 +117,9 @@ api.get('/catalogo', (_req, res) => {
     ddjj: {
       lugar: process.env.DDJJ_LUGAR || 'Buenos Aires',
       seccional: process.env.DDJJ_SECCIONAL || '',
+      // A quien va dirigido el Anexo 08 D ("Al Sr. Encargado del Registro
+      // Automotor: ...").
+      registro: process.env.DDJJ_REGISTRO || (process.env.DDJJ_SECCIONAL ? `Registro Seccional Nº ${process.env.DDJJ_SECCIONAL}` : ''),
     },
   })
 })
@@ -341,6 +345,7 @@ function tramitePublico(t, vehiculos) {
     notas: t.notas,
     ddjj: t.ddjj ? JSON.parse(t.ddjj) : null,
     comprador: t.comprador ? JSON.parse(t.comprador) : null,
+    transferencia: t.transferencia ? JSON.parse(t.transferencia) : null,
     vehiculo: v ? vehiculoPublico(v) : null,
   }
 }
@@ -405,6 +410,18 @@ function limpiarComprador(c) {
   return salida
 }
 
+// SI / NO / sin indicar: la voluntad de pago de la Disp. 142/2024.
+const siNo = (v) => (['SI', 'NO'].includes(String(v || '').toUpperCase()) ? String(v).toUpperCase() : '')
+function limpiarTransferencia(c, previo = {}) {
+  return {
+    ...previo,
+    solicitud08d: c?.solicitud08d !== undefined ? texto(c.solicitud08d, 40).toUpperCase() : previo.solicitud08d || '',
+    sellos: c?.sellos !== undefined ? siNo(c.sellos) : previo.sellos || '',
+    patentes: c?.patentes !== undefined ? siNo(c.patentes) : previo.patentes || '',
+    infracciones: c?.infracciones !== undefined ? siNo(c.infracciones) : previo.infracciones || '',
+  }
+}
+
 const enFlota = (dominio) => Boolean(db.prepare('SELECT 1 FROM vehiculos WHERE dominio = ?').get(dominio))
 
 function validarTipoYMotivo(tipo, motivo, observaciones) {
@@ -440,8 +457,10 @@ api.post('/tramites', (req, res) => {
   if (error) return res.status(400).json({ error })
 
   const id = db.transaction(() => {
-    const info = db.prepare(`INSERT INTO tramites (dominio, tipo, motivo, observaciones, solicitante_id) VALUES (?, ?, ?, ?, ?)`)
-      .run(dominio, tipo, motivo, observaciones, req.usuario.id)
+    const transferencia = tipoDe(tipo)?.anexo08d && req.body?.transferencia
+      ? JSON.stringify(limpiarTransferencia(req.body.transferencia)) : null
+    const info = db.prepare(`INSERT INTO tramites (dominio, tipo, motivo, observaciones, solicitante_id, transferencia) VALUES (?, ?, ?, ?, ?, ?)`)
+      .run(dominio, tipo, motivo, observaciones, req.usuario.id, transferencia)
     evento(info.lastInsertRowid, req.usuario.id, 'CREADO', { hasta: 'SOLICITADO', texto: observaciones })
     return info.lastInsertRowid
   })()
@@ -453,7 +472,7 @@ api.patch('/tramites/:id', (req, res) => {
   if (!t) return
   // Solo los datos del comprador: los puede cargar tambien quien lo pidio,
   // aunque ya lo haya tomado alguien (suele ser quien tiene el DNI).
-  const soloComprador = Object.keys(req.body || {}).every((k) => k === 'comprador')
+  const soloComprador = Object.keys(req.body || {}).every((k) => k === 'comprador' || k === 'transferencia')
   const puedeComprador = soloComprador && (esGestor(req.usuario) || t.solicitante_id === req.usuario.id)
   if (!puedeEditar(req.usuario, t) && !puedeComprador) {
     return res.status(403).json({ error: 'Ya lo tomó quien gestiona: pedile el cambio con una nota' })
@@ -482,6 +501,9 @@ api.patch('/tramites/:id', (req, res) => {
   } else {
     nuevo.comprador = t.comprador
   }
+  nuevo.transferencia = req.body?.transferencia !== undefined
+    ? JSON.stringify(limpiarTransferencia(req.body.transferencia, t.transferencia ? JSON.parse(t.transferencia) : {}))
+    : t.transferencia
 
   const etiquetas = { dominio: 'dominio', tipo: 'trámite', motivo: 'motivo', observaciones: 'observaciones', nro_registro: 'nº de trámite del Registro' }
   const cambiados = Object.keys(nuevo).filter((k) => String(nuevo[k] ?? '') !== String(t[k] ?? ''))
@@ -489,10 +511,17 @@ api.patch('/tramites/:id', (req, res) => {
 
   db.transaction(() => {
     db.prepare(`UPDATE tramites SET dominio = @dominio, tipo = @tipo, motivo = @motivo, observaciones = @observaciones,
-                nro_registro = @nro_registro, comprador = @comprador, actualizado_en = datetime('now') WHERE id = @id`).run({ ...nuevo, id: t.id })
+                nro_registro = @nro_registro, comprador = @comprador, transferencia = @transferencia,
+                actualizado_en = datetime('now') WHERE id = @id`).run({ ...nuevo, id: t.id })
     const detalle = cambiados.map((k) => {
       if (k === 'observaciones') return 'observaciones'
       if (k === 'comprador') return 'los datos del comprador'
+      if (k === 'transferencia') {
+        const tr = JSON.parse(nuevo.transferencia || '{}')
+        const sn = (v) => (v === 'SI' ? 'sí' : v === 'NO' ? 'no' : 'sin indicar')
+        return `voluntad de pago: sellos ${sn(tr.sellos)}, patentes ${sn(tr.patentes)}, infracciones ${sn(tr.infracciones)}` +
+          (tr.solicitud08d ? `; solicitud 08 D ${tr.solicitud08d}` : '')
+      }
       if (k === 'tipo') return `trámite: ${tipoDe(nuevo.tipo)?.nombre}`
       if (k === 'motivo') return `motivo: ${MOTIVOS.find((m) => m.clave === nuevo.motivo)?.nombre || 'sin motivo'}`
       return `${etiquetas[k]}: ${nuevo[k] || '—'}`
@@ -637,6 +666,67 @@ api.post('/tramites/:id/ddjj', (req, res) => {
     res.set('Content-Disposition', `inline; filename="DDJJ-extravio-${t.dominio}.pdf"`)
     res.send(Buffer.from(pdf))
   }).catch((e) => res.status(500).json({ error: `No se pudo generar el PDF: ${e.message}` }))
+})
+
+// Anexo 08 D de una transferencia. Recibe lo que se ve en el formulario,
+// guarda en el tramite lo impreso (y la voluntad de pago), y devuelve el PDF.
+api.post('/tramites/:id/anexo08d', async (req, res) => {
+  const t = cargarTramite(req, res)
+  if (!t) return
+  if (!tipoDe(t.tipo)?.anexo08d) return res.status(400).json({ error: 'El Anexo 08 D es para transferencias' })
+  if (!esGestor(req.usuario) && t.solicitante_id !== req.usuario.id) {
+    return res.status(403).json({ error: 'Lo puede imprimir quien gestiona o quien pidió el trámite' })
+  }
+
+  const b = req.body || {}
+  const datos = {
+    lugar: texto(b.lugar, 60),
+    fecha: /^\d{4}-\d{2}-\d{2}$/.test(b.fecha || '') ? b.fecha : new Date().toISOString().slice(0, 10),
+    registro: texto(b.registro, 90),
+    solicitud: texto(b.solicitud, 40).toUpperCase(),
+    dominio: t.dominio,
+    marca: texto(b.marca, 60), tipo: texto(b.tipo, 60), modelo: texto(b.modelo, 90),
+    marcaMotor: texto(b.marcaMotor, 60), nroMotor: texto(b.nroMotor, 60),
+    marcaChasis: texto(b.marcaChasis, 60), nroChasis: texto(b.nroChasis, 60),
+    observaciones: textoLargo(b.observaciones, 900),
+    sellos: siNo(b.sellos), patentes: siNo(b.patentes), infracciones: siNo(b.infracciones),
+  }
+
+  db.transaction(() => {
+    const previo = t.transferencia ? JSON.parse(t.transferencia) : {}
+    const nuevo = {
+      ...limpiarTransferencia({ solicitud08d: datos.solicitud, sellos: datos.sellos, patentes: datos.patentes, infracciones: datos.infracciones }, previo),
+      anexo: datos,
+    }
+    db.prepare("UPDATE tramites SET transferencia = ?, actualizado_en = datetime('now') WHERE id = ?").run(JSON.stringify(nuevo), t.id)
+    evento(t.id, req.usuario.id, 'DDJJ', { texto: 'Generó el Anexo 08 D' })
+
+    // Igual que en la DDJJ de extravio: quien gestiona puede dejar los datos
+    // del automotor en la flota. Solo lo completado; lo vacio no borra.
+    if (b.guardarEnVehiculo && esGestor(req.usuario)) {
+      const v = db.prepare('SELECT * FROM vehiculos WHERE dominio = ?').get(t.dominio)
+      if (v) {
+        const registrales = {
+          marca_chasis: datos.marcaChasis || datos.marca, tipo_registral: datos.tipo, modelo_registral: datos.modelo,
+          marca_motor: datos.marcaMotor, nro_motor: datos.nroMotor, nro_chasis: datos.nroChasis,
+        }
+        const sets = Object.entries(registrales).filter(([, val]) => val).map(([k, val]) => [k, val.toUpperCase()])
+        if (sets.length) {
+          db.prepare(`UPDATE vehiculos SET ${sets.map(([k]) => `${k} = ?`).join(', ')}, actualizado_en = datetime('now') WHERE id = ?`)
+            .run(...sets.map(([, val]) => val), v.id)
+        }
+      }
+    }
+  })()
+
+  try {
+    const pdf = await generarAnexo08D(datos)
+    res.set('Content-Type', 'application/pdf')
+    res.set('Content-Disposition', `inline; filename="Anexo-08D-${t.dominio}.pdf"`)
+    res.send(Buffer.from(pdf))
+  } catch (e) {
+    res.status(500).json({ error: `No se pudo generar el PDF: ${e.message}` })
+  }
 })
 
 /* ----------------------------- usuarios ----------------------------- */

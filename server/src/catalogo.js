@@ -6,7 +6,7 @@
 // "reposicion de placas", dice "se le cayo la chapa".
 export const TIPOS = [
   {
-    clave: 'TRANSFERENCIA', nombre: 'Transferencia', corto: 'Transferencia', comprador: true,
+    clave: 'TRANSFERENCIA', nombre: 'Transferencia', corto: 'Transferencia', comprador: true, anexo08d: true,
     detalle: 'Cambio de titular por compra o venta',
     palabras: ['08', 'formulario 08', 'cambio de titular', 'titularidad', 'compra', 'venta', 'vender', 'comprador'],
   },
