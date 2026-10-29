@@ -98,7 +98,7 @@ export default function Vehiculo({ vehiculo, catalogo, usuario, tramites, onGuar
         <fieldset className="opciones">
           <legend>Datos registrales <span className="apagado">(no están en la planilla: se cargan acá)</span></legend>
           {editable && !nuevo && onLeerDocumento && (
-            <button type="button" className="boton boton-suave boton-chico boton-leer" onClick={() => onLeerDocumento(vehiculo)}>
+            <button type="button" className="boton boton-chico boton-leer" onClick={() => onLeerDocumento(vehiculo)}>
               <Icono clave="documento" tamano={16} /> Completar desde la cédula o el título
             </button>
           )}
