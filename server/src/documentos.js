@@ -34,15 +34,58 @@ function correr(cmd, args, opciones = {}) {
 
 const esPDF = (buffer) => buffer.subarray(0, 5).toString('latin1') === '%PDF-'
 
-async function ocr(rutaImagen, dir) {
-  // Escala de grises, el doble de tamaño y contraste: con las fotos de una
-  // cedula gastada es lo que mas mejora la lectura. -auto-orient respeta la
-  // rotacion que guarda el celular en el EXIF.
-  const preparada = path.join(dir, 'ocr.png')
-  await correr('convert', [rutaImagen + '[0]', '-auto-orient', '-colorspace', 'Gray', '-resize', '200%', '-normalize', '-sharpen', '0x1', preparada])
+async function ocr(rutaImagen, dir, { recorte = '', escala = '200%' } = {}) {
+  // Escala de grises, mas tamaño y contraste: con las fotos de una cedula
+  // gastada es lo que mas mejora la lectura. -auto-orient respeta la rotacion
+  // que guarda el celular en el EXIF.
+  const preparada = path.join(dir, `ocr-${recorte ? 'r' : 'e'}.png`)
+  await correr('convert', [rutaImagen + '[0]', '-auto-orient', ...(recorte ? ['-crop', recorte, '+repage'] : []),
+    '-colorspace', 'Gray', '-resize', escala, '-normalize', '-sharpen', '0x1', preparada])
   // psm 6: un bloque de texto uniforme. Es el que mejor respeta las lineas
   // "ETIQUETA: valor" de los dos documentos.
   return correr('tesseract', [preparada, 'stdout', '-l', 'spa', '--psm', '6'])
+}
+
+// La tarjeta en la foto: zona clara sobre el fondo (la mesa, la funda). Se
+// difumina, se umbraliza y se toma el recuadro de lo que quedo claro. Con
+// el fondo recortado y la tarjeta mas grande, Tesseract lee la letra chica
+// (el domicilio del DNI) que en la foto entera se pierde. Si el recuadro no
+// tiene sentido (casi toda la foto, o casi nada), no se recorta.
+async function recuadroTarjeta(rutaImagen) {
+  try {
+    const salida = await correr('convert', [rutaImagen + '[0]', '-auto-orient', '-colorspace', 'Gray', '-blur', '0x8',
+      '-threshold', '55%', '-format', '%@ %w %h', 'info:'])
+    const m = salida.trim().match(/^(\d+)x(\d+)\+(\d+)\+(\d+) (\d+) (\d+)$/)
+    if (!m) return ''
+    const [, w, h, , , W, H] = m.map(Number)
+    const fraccion = (w * h) / (W * H)
+    return fraccion > 0.08 && fraccion < 0.9 ? `${w}x${h}+${m[3]}+${m[4]}` : ''
+  } catch {
+    return ''
+  }
+}
+
+/**
+ * Para documentos de tarjeta (el DNI): devuelve las lecturas de la foto
+ * entera y de la tarjeta recortada; quien interpreta se queda con la mejor.
+ * Un PDF con texto devuelve ese texto.
+ */
+export async function extraerTextosTarjeta(buffer) {
+  if (esPDF(buffer)) {
+    const { texto, metodo } = await extraerTexto(buffer)
+    return { textos: [texto], metodo }
+  }
+  const dir = fs.mkdtempSync(path.join(os.tmpdir(), 'doc-'))
+  try {
+    const archivo = path.join(dir, 'foto')
+    fs.writeFileSync(archivo, buffer)
+    const textos = [await ocr(archivo, dir)]
+    const recorte = await recuadroTarjeta(archivo)
+    if (recorte) textos.push(await ocr(archivo, dir, { recorte, escala: '300%' }))
+    return { textos, metodo: 'ocr' }
+  } finally {
+    fs.rmSync(dir, { recursive: true, force: true })
+  }
 }
 
 /** Devuelve { texto, metodo: 'pdf' | 'ocr' } */
@@ -70,7 +113,7 @@ export async function extraerTexto(buffer) {
 
 /* ------------------------------ interpretacion ------------------------------ */
 
-const sinTildes = (s) => s.normalize('NFD').replace(/[̀-ͯ]/g, '')
+const sinTildes = (s) => s.normalize('NFD').replace(/[\u0300-\u036f]/g, '')
 const vacio = (v) => !v || /^[-–—.\s]*$/.test(v)
 
 // El OCR confunde letras y numeros que se parecen. En un dominio la posicion
@@ -97,6 +140,18 @@ const corregirChasis = (v) => {
 // "EX-EL FIERRO".
 // Son numeros ("04-", "277-") o dos letras ("EX-"): "PICK-UP" no es un codigo.
 const sinCodigo = (v) => v.replace(/^\s*(\d{1,4}|[A-Z]{2})-(?=[A-Z])/, '').trim()
+
+// El tipo registral dice que clase de vehiculo es; la app lo agrupa en
+// Camioneta / Camion / Acoplado. Lo que no encaja queda sin categoria y se
+// elige a mano en la revision.
+export function categoriaDeTipo(tipo) {
+  const t = sinTildes(String(tipo || '')).toUpperCase()
+  if (!t) return ''
+  if (/REMOLQUE|ACOPLADO|CARRETON|TOLVA|BATEA/.test(t)) return 'ACOPLADO'
+  if (/TRACTOR|CAMION|CHASIS/.test(t)) return 'CAMION'
+  if (/PICK|UTILITARIO|RURAL|SEDAN|FURGON|TODO\s*TERRENO|SUV/.test(t)) return 'CAMIONETA'
+  return ''
+}
 
 // Al vocabulario de la app. El Registro escribe el uso de varias formas.
 function normalizarUso(v) {
@@ -196,6 +251,7 @@ export function interpretar(textoCrudo) {
     marcaChasis: marcaChasis.replace(/\s+/g, ' '),
     modeloRegistral: modelo.replace(/\s+/g, ' '),
     tipoRegistral: tipo.replace(/\s+/g, ' '),
+    categoria: categoriaDeTipo(tipo),
     marcaMotor: marcaMotor.replace(/\s+/g, ' '),
     // El motor puede tener un espacio de verdad ("CFN 133182"): solo se
     // limpian los dobles.

@@ -1,10 +1,11 @@
 import { useCallback, useEffect, useState } from 'react'
 import * as api from '../api.js'
 import { EstadoChip } from '../componentes/Estado.jsx'
+import Comprador from './Comprador.jsx'
 import { resumenVehiculo } from '../componentes/DominioInput.jsx'
 import Modal from '../componentes/Modal.jsx'
 import Selector from '../componentes/Selector.jsx'
-import { fechaHora, haceCuanto } from '../formato.js'
+import { fecha, fechaHora, haceCuanto } from '../formato.js'
 import { Icono } from '../iconos.jsx'
 
 const ACCIONES_EVENTO = {
@@ -27,6 +28,7 @@ export default function DetalleTramite({ id, catalogo, usuario, onCambio, onBorr
   const [editando, setEditando] = useState(false)
   const [edicion, setEdicion] = useState({})
   const [confirmarBorrar, setConfirmarBorrar] = useState(false)
+  const [compradorAbierto, setCompradorAbierto] = useState(false)
 
   const cargar = useCallback(async () => {
     try {
@@ -73,6 +75,9 @@ export default function DetalleTramite({ id, catalogo, usuario, onCambio, onBorr
   const puedeEditar = usuario.esGestor || (t.solicitante?.id === usuario.id && !t.gestor && t.estado === 'SOLICITADO')
   const puedeBorrar = usuario.esAdmin || (t.solicitante?.id === usuario.id && !t.gestor && t.estado === 'SOLICITADO')
   const v = t.vehiculo
+  // El comprador lo puede cargar tambien quien pidio el tramite, aunque ya lo
+  // haya tomado alguien: suele ser quien tiene la foto del DNI.
+  const puedeCargarComprador = usuario.esGestor || t.solicitante?.id === usuario.id
 
   const abrirEstado = (clave) => {
     setPasarA(clave)
@@ -162,6 +167,42 @@ export default function DetalleTramite({ id, catalogo, usuario, onCambio, onBorr
           <section className="detalle-bloque">
             <h4 className="rv-eyebrow">Observaciones</h4>
             <p className="detalle-texto">{t.observaciones}</p>
+          </section>
+        )}
+
+        {/* ---- Comprador (transferencias y denuncias de venta) ---- */}
+        {def?.comprador && (
+          <section className="detalle-bloque">
+            <div className="fila-acciones">
+              <h4 className="rv-eyebrow">Comprador</h4>
+              {puedeCargarComprador && (
+                <button type="button" className={`boton boton-chico ${t.comprador ? 'boton-suave' : ''}`} onClick={() => setCompradorAbierto(true)}>
+                  <Icono clave="perfil" tamano={16} /> {t.comprador ? 'Editar' : 'Cargar desde el DNI'}
+                </button>
+              )}
+            </div>
+            {t.comprador ? (
+              <div className="comprador">
+                <p>
+                  <b>{[t.comprador.apellido, t.comprador.nombres].filter(Boolean).join(', ')}</b>
+                  {t.comprador.verificado && <span className="pastilla">DNI verificado</span>}
+                </p>
+                <p className="apagado">
+                  {[
+                    t.comprador.dni && `DNI ${Number(t.comprador.dni).toLocaleString('es-AR')}`,
+                    t.comprador.cuil && `CUIL ${t.comprador.cuil}`,
+                    t.comprador.fechaNacimiento && `nac. ${fecha(t.comprador.fechaNacimiento + 'T12:00:00Z')}`,
+                    t.comprador.nacionalidad,
+                  ].filter(Boolean).join(' · ')}
+                </p>
+                {t.comprador.domicilio && <p className="apagado">{t.comprador.domicilio}</p>}
+                {(t.comprador.telefono || t.comprador.email) && (
+                  <p className="apagado">{[t.comprador.telefono, t.comprador.email].filter(Boolean).join(' · ')}</p>
+                )}
+              </div>
+            ) : (
+              <p className="apagado">Todavía no hay datos del comprador. Se cargan sacándole una foto al DNI.</p>
+            )}
           </section>
         )}
 
@@ -307,6 +348,11 @@ export default function DetalleTramite({ id, catalogo, usuario, onCambio, onBorr
             <button type="submit" className="boton boton-chico" disabled={ocupado || !nota.trim()}>Agregar nota</button>
           </form>
         </section>
+
+        {compradorAbierto && (
+          <Comprador tramite={t} onCerrar={() => setCompradorAbierto(false)}
+                     onGuardado={(r) => { setDatos(r); onCambio(r.tramite); setCompradorAbierto(false) }} />
+        )}
 
         {(puedeEditar || puedeBorrar) && !editando && (
           <footer className="detalle-pie">

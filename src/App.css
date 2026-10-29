@@ -1030,3 +1030,12 @@ input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; a
 .th-info { display: inline-flex; align-items: center; gap: 2px; }
 .th-info .info-boton { width: 24px; height: 24px; }
 .th-info .info-globo { text-transform: none; letter-spacing: 0; font-size: 13px; font-weight: 400; }
+
+/* ---- Comprador ---- */
+
+.lector-dni { display: flex; flex-wrap: wrap; align-items: center; gap: 12px 14px; padding: 14px 16px; border-radius: var(--rv-r-md); background: var(--rv-tint); }
+.lector-dni > div:not(.fila-acciones) { flex: 1 1 260px; min-width: 0; }
+.lector-dni strong { font-size: 15px; }
+.lector-dni .apagado { font-size: 13px; }
+.comprador { display: flex; flex-direction: column; gap: 3px; font-size: 14.5px; }
+.comprador .pastilla { margin-left: 8px; vertical-align: middle; }

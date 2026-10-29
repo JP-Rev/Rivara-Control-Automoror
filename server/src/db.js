@@ -115,6 +115,9 @@ export function migrate() {
       -- Lo que se imprimio en la DDJJ de extravio la ultima vez (JSON), para
       -- reimprimirla igual.
       ddjj           TEXT,
+      -- Transferencias y denuncias de venta: datos del comprador (JSON).
+      -- Son datos personales: no se guarda la foto del DNI, solo esto.
+      comprador      TEXT,
       creado_en      TEXT NOT NULL DEFAULT (datetime('now')),
       actualizado_en TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -164,4 +167,6 @@ export function migrate() {
   for (const [col, def] of [['nro_titulo', "TEXT NOT NULL DEFAULT ''"], ['nro_cedula', "TEXT NOT NULL DEFAULT ''"]]) {
     if (!columnas.has(col)) db.exec(`ALTER TABLE vehiculos ADD COLUMN ${col} ${def}`)
   }
+  const deTramites = new Set(db.prepare('PRAGMA table_info(tramites)').all().map((c) => c.name))
+  if (!deTramites.has('comprador')) db.exec('ALTER TABLE tramites ADD COLUMN comprador TEXT')
 }

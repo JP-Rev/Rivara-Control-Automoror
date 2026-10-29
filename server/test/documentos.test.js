@@ -56,7 +56,7 @@ test('titulo digital (PDF con texto)', () => {
   assert.equal(r.dominio, 'AA123BC')
   assert.deepEqual(r.campos, {
     marcaChasis: 'EL FIERRO', modeloRegistral: 'SEMIRREMOLQUE PARA TRANSPORTE DE CARGA GENERAL 3E',
-    tipoRegistral: 'SEMIRREMOLQUE', marcaMotor: '', nroMotor: '', nroChasis: '8E9TPS303L1600000',
+    tipoRegistral: 'SEMIRREMOLQUE', categoria: 'ACOPLADO', marcaMotor: '', nroMotor: '', nroChasis: '8E9TPS303L1600000',
     uso: 'PRIV. TRANSP. DE CARGA INTERJ.', anio: '2021', titular: 'EMPRESA DE PRUEBA SA',
     nroTitulo: '012345678', nroCedula: 'AZB00000', seccional: '01292',
   })
@@ -69,6 +69,7 @@ test('cedula leida por OCR', () => {
   assert.equal(r.campos.marcaChasis, 'TOYOTA')
   assert.equal(r.campos.modeloRegistral, 'HILUX 4X4 C/S DX 2.4 TDI 6 MT')
   assert.equal(r.campos.tipoRegistral, 'PICK-UP') // PICK- no es un codigo
+  assert.equal(r.campos.categoria, 'CAMIONETA')
   assert.equal(r.campos.uso, 'PRIV. TRANSP. DE CARGA INTERJ.')
   assert.equal(r.campos.nroChasis, '8AJFB8CB9K1000000') // un VIN no lleva O
   assert.equal(r.campos.nroMotor, '2GD-G000000')
@@ -89,4 +90,13 @@ test('dominio: corrige letras y numeros por posicion', () => {
   assert.equal(corregirDominio('A0376JT'), 'AO376JT')
   assert.equal(corregirDominio('EPZ7O2'), 'EPZ702')
   assert.equal(corregirDominio('XX'), '')
+})
+
+test('categoria a partir del tipo registral', async () => {
+  const { categoriaDeTipo } = await import('../src/documentos.js')
+  assert.equal(categoriaDeTipo('TRACTOR DE CARRETERA'), 'CAMION')
+  assert.equal(categoriaDeTipo('CHASIS CON CABINA'), 'CAMION')
+  assert.equal(categoriaDeTipo('SEMIRREMOLQUE'), 'ACOPLADO')
+  assert.equal(categoriaDeTipo('PICK-UP'), 'CAMIONETA')
+  assert.equal(categoriaDeTipo('MOTOCICLETA'), '')
 })

@@ -62,3 +62,16 @@ export async function leerDocumento(archivo) {
   if (!res.ok) throw new Error(cuerpo.error || 'No se pudo leer el documento')
   return cuerpo
 }
+
+// DNI del comprador (foto del dorso o del frente). Devuelve lo leido.
+export async function leerDni(archivo) {
+  const res = await fetch('/api/documentos/dni', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': archivo.type || 'application/octet-stream' },
+    body: archivo,
+  })
+  const cuerpo = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(cuerpo.error || 'No se pudo leer el DNI')
+  return cuerpo
+}

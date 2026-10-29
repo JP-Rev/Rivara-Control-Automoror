@@ -14,7 +14,7 @@ const CAMPOS = {
 }
 
 export const resumenVehiculo = (v) =>
-  [v.marca || v.rol, v.modelo, v.unidad && `unidad ${v.unidad}`, v.chofer].filter(Boolean).join(' · ')
+  [v.marca || (v.categoria === 'ACOPLADO' ? 'Acoplado' : ''), v.modelo, v.unidad && `unidad ${v.unidad}`, v.chofer].filter(Boolean).join(' · ')
 
 // Campo de dominio con sugerencias de la flota. Se puede escribir el dominio
 // directo o buscar por chofer, marca o numero de unidad ("24", "perez").

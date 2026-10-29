@@ -16,7 +16,7 @@ const MODELO_A_MARCA = {
   ranger: 'Ford', cargo: 'Ford',
 }
 
-const normal = (s) => String(s || '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+const normal = (s) => String(s || '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 
 /**
  * ("Toyota Hilux", "DX Pack 2.5") -> { marca: 'Toyota', modelo: 'Hilux DX Pack 2.5' }

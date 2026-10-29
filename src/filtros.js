@@ -17,7 +17,7 @@ import { useEffect, useMemo, useState } from 'react'
 //   · Lo elegido se recuerda por pantalla (localStorage): volver a la bandeja
 //     la deja como estaba.
 
-export const normalizar = (s) => String(s ?? '').normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+export const normalizar = (s) => String(s ?? '').normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
 export const compactar = (s) => normalizar(s).replace(/[^a-z0-9]/g, '')
 
 // 'estado:"en espera" volvo -vacante' -> [{campo:'estado', valor:'en espera'}, {valor:'volvo'}, {valor:'vacante', negado:true}]

@@ -381,7 +381,7 @@ function App() {
                   }} />
       )}
       {leerDoc && catalogo && (
-        <LeerDocumento vehiculos={vehiculos} vehiculoInicial={leerDoc.vehiculo} usuario={usuario}
+        <LeerDocumento vehiculos={vehiculos} vehiculoInicial={leerDoc.vehiculo} usuario={usuario} catalogo={catalogo}
                        onAplicado={() => { cargarVehiculos(); cargarCatalogo(); cargarTramites() }}
                        onCerrar={() => setLeerDoc(null)} />
       )}

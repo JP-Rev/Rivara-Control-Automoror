@@ -6,12 +6,13 @@ import {
   requireAdmin, requireAuth, requireGestor, sesionOpcional, usuarioPublico, verificarPassword,
 } from './auth.js'
 import {
-  CAMPOS_REGISTRALES, CATEGORIAS, ESTADOS, MARCAS, MARCAS_MOTOR, MOTIVOS, ROLES, TIPOS, TIPOS_REGISTRALES, USOS,
+  CAMPOS_REGISTRALES, CATEGORIAS, ESTADOS, MARCAS, MARCAS_MOTOR, MOTIVOS, TIPOS, TIPOS_REGISTRALES, USOS,
   claves, tipoDe,
 } from './catalogo.js'
 import { dominioValido, normalizarDominio } from './dominio.js'
 import { DOCUMENTOS_DDJJ, generarDDJJ } from './ddjj.js'
-import { extraerTexto, interpretar } from './documentos.js'
+import { extraerTexto, extraerTextosTarjeta, interpretar } from './documentos.js'
+import { interpretarDni } from './dni.js'
 import { CAMPOS_PLANILLA, estadoSincronizacion, sincronizar } from './sincronizar.js'
 
 export const api = Router()
@@ -104,7 +105,6 @@ api.get('/catalogo', (_req, res) => {
       marcasMotor: lista(MARCAS_MOTOR, 'marca_motor', 'marca_chasis'),
       usos: lista(USOS, 'uso'),
       tiposRegistrales: lista(TIPOS_REGISTRALES, 'tipo_registral'),
-      roles: lista(ROLES, 'rol'),
       marcasPlanilla: lista([], 'marca'),
       titulares: lista([], 'titular'),
       localidades: lista([], 'localidad'),
@@ -280,6 +280,22 @@ api.post('/documentos/leer', requireGestor, express.raw({ type: () => true, limi
   }
 })
 
+// DNI del comprador (transferencias y denuncias de venta). Lo puede usar
+// cualquiera que cargue tramites, no solo quien gestiona: quien vende suele
+// ser quien tiene la foto. Tampoco guarda nada: devuelve lo leido para
+// revisarlo, y se guarda con PATCH /tramites/:id.
+api.post('/documentos/dni', express.raw({ type: () => true, limit: '15mb' }), async (req, res) => {
+  const buffer = req.body
+  if (!Buffer.isBuffer(buffer) || !buffer.length) return res.status(400).json({ error: 'No llegó ningún archivo' })
+  if (!formatoArchivo(buffer)) return res.status(400).json({ error: 'El archivo tiene que ser un PDF o una foto (JPG, PNG, WEBP)' })
+  try {
+    const { textos, metodo } = await extraerTextosTarjeta(buffer)
+    res.json({ ...interpretarDni(textos), metodo })
+  } catch (e) {
+    res.status(500).json({ error: `No se pudo leer el DNI: ${e.message}` })
+  }
+})
+
 // Sin "forzar" respeta el minimo entre lecturas: es lo que llama la app al
 // abrirse. Con "forzar" lee ya, aunque el archivo no haya cambiado.
 api.post('/sincronizar', async (req, res) => {
@@ -324,6 +340,7 @@ function tramitePublico(t, vehiculos) {
     ultimoMovimiento: t.ultimo_movimiento || t.creado_en,
     notas: t.notas,
     ddjj: t.ddjj ? JSON.parse(t.ddjj) : null,
+    comprador: t.comprador ? JSON.parse(t.comprador) : null,
     vehiculo: v ? vehiculoPublico(v) : null,
   }
 }
@@ -374,6 +391,20 @@ function cargarTramite(req, res) {
 // es de quien lo gestiona.
 const puedeEditar = (u, t) => esGestor(u) || (t.solicitante_id === u.id && !t.gestor_id && t.estado === 'SOLICITADO')
 
+const CAMPOS_COMPRADOR = ['apellido', 'nombres', 'dni', 'cuil', 'sexo', 'fechaNacimiento', 'nacionalidad', 'domicilio', 'telefono', 'email']
+function limpiarComprador(c) {
+  const salida = {}
+  for (const k of CAMPOS_COMPRADOR) salida[k] = texto(c?.[k], 160)
+  salida.dni = salida.dni.replace(/\D/g, '')
+  salida.cuil = salida.cuil.replace(/[^\d-]/g, '')
+  salida.sexo = ['M', 'F', 'X'].includes(salida.sexo) ? salida.sexo : ''
+  if (salida.fechaNacimiento && !/^\d{4}-\d{2}-\d{2}$/.test(salida.fechaNacimiento)) salida.fechaNacimiento = ''
+  // Marca de como se cargo, para el seguimiento: leido de un DNI y
+  // verificado con los digitos de control, o escrito a mano.
+  salida.verificado = Boolean(c?.verificado)
+  return salida
+}
+
 const enFlota = (dominio) => Boolean(db.prepare('SELECT 1 FROM vehiculos WHERE dominio = ?').get(dominio))
 
 function validarTipoYMotivo(tipo, motivo, observaciones) {
@@ -420,7 +451,13 @@ api.post('/tramites', (req, res) => {
 api.patch('/tramites/:id', (req, res) => {
   const t = cargarTramite(req, res)
   if (!t) return
-  if (!puedeEditar(req.usuario, t)) return res.status(403).json({ error: 'Ya lo tomó quien gestiona: pedile el cambio con una nota' })
+  // Solo los datos del comprador: los puede cargar tambien quien lo pidio,
+  // aunque ya lo haya tomado alguien (suele ser quien tiene el DNI).
+  const soloComprador = Object.keys(req.body || {}).every((k) => k === 'comprador')
+  const puedeComprador = soloComprador && (esGestor(req.usuario) || t.solicitante_id === req.usuario.id)
+  if (!puedeEditar(req.usuario, t) && !puedeComprador) {
+    return res.status(403).json({ error: 'Ya lo tomó quien gestiona: pedile el cambio con una nota' })
+  }
 
   const nuevo = {
     dominio: req.body?.dominio !== undefined ? normalizarDominio(req.body.dominio) : t.dominio,
@@ -437,15 +474,25 @@ api.patch('/tramites/:id', (req, res) => {
   const error = validarTipoYMotivo(nuevo.tipo, nuevo.motivo, nuevo.observaciones)
   if (error) return res.status(400).json({ error })
 
+  // Datos del comprador: un objeto con campos conocidos, nada mas. Se
+  // compara como JSON para saber si cambio.
+  if (req.body?.comprador !== undefined) {
+    const c = req.body.comprador
+    nuevo.comprador = c ? JSON.stringify(limpiarComprador(c)) : null
+  } else {
+    nuevo.comprador = t.comprador
+  }
+
   const etiquetas = { dominio: 'dominio', tipo: 'trámite', motivo: 'motivo', observaciones: 'observaciones', nro_registro: 'nº de trámite del Registro' }
-  const cambiados = Object.keys(nuevo).filter((k) => String(nuevo[k]) !== String(t[k]))
+  const cambiados = Object.keys(nuevo).filter((k) => String(nuevo[k] ?? '') !== String(t[k] ?? ''))
   if (!cambiados.length) return res.json({ tramite: leerTramite(t.id), eventos: eventosDe(t.id) })
 
   db.transaction(() => {
     db.prepare(`UPDATE tramites SET dominio = @dominio, tipo = @tipo, motivo = @motivo, observaciones = @observaciones,
-                nro_registro = @nro_registro, actualizado_en = datetime('now') WHERE id = @id`).run({ ...nuevo, id: t.id })
+                nro_registro = @nro_registro, comprador = @comprador, actualizado_en = datetime('now') WHERE id = @id`).run({ ...nuevo, id: t.id })
     const detalle = cambiados.map((k) => {
       if (k === 'observaciones') return 'observaciones'
+      if (k === 'comprador') return 'los datos del comprador'
       if (k === 'tipo') return `trámite: ${tipoDe(nuevo.tipo)?.nombre}`
       if (k === 'motivo') return `motivo: ${MOTIVOS.find((m) => m.clave === nuevo.motivo)?.nombre || 'sin motivo'}`
       return `${etiquetas[k]}: ${nuevo[k] || '—'}`

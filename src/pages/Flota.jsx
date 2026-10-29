@@ -113,7 +113,6 @@ export default function Flota({ vehiculos, sincronizacion, catalogo, usuario, on
         chasis: (v) => v.nroChasis,
         motor: (v) => v.nroMotor,
         uso: (v) => v.uso,
-        rol: (v) => v.rol,
       },
       compactos: ['dominio', 'patente', 'chasis', 'motor'],
     },
@@ -204,7 +203,6 @@ export default function Flota({ vehiculos, sincronizacion, catalogo, usuario, on
                       </td>
                       <td>
                         <span>{nombreCategoria(v.categoria)}{v.unidad && ` ${v.unidad}`}</span>
-                        {v.rol && <small className="celda-detalle">{v.rol}</small>}
                       </td>
                       <td>
                         {[v.marca, v.modelo].filter(Boolean).join(' ') || <span className="apagado">—</span>}

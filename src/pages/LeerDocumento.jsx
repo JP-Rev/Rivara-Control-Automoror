@@ -3,6 +3,7 @@ import * as api from '../api.js'
 import DominioInput from '../componentes/DominioInput.jsx'
 import Info from '../componentes/Info.jsx'
 import Modal from '../componentes/Modal.jsx'
+import Selector from '../componentes/Selector.jsx'
 import { Icono } from '../iconos.jsx'
 
 // Completar un vehiculo leyendo su cedula o su titulo.
@@ -14,6 +15,7 @@ import { Icono } from '../iconos.jsx'
 // tenia el vehiculo, y lo que lo pisaria viene destildado.
 
 const CAMPOS = [
+  ['categoria', 'Tipo de vehículo'],
   ['marcaChasis', 'Marca de chasis'],
   ['modeloRegistral', 'Modelo (título)'],
   ['tipoRegistral', 'Tipo (título)'],
@@ -29,7 +31,7 @@ const CAMPOS = [
 
 const igual = (a, b) => String(a ?? '').trim().toUpperCase() === String(b ?? '').trim().toUpperCase()
 
-export default function LeerDocumento({ vehiculos, vehiculoInicial, usuario, onAplicado, onCerrar }) {
+export default function LeerDocumento({ vehiculos, vehiculoInicial, usuario, catalogo, onAplicado, onCerrar }) {
   const [paso, setPaso] = useState('elegir') // elegir | leyendo | revisar | listo
   const [arrastrando, setArrastrando] = useState(false)
   const [error, setError] = useState('')
@@ -51,7 +53,8 @@ export default function LeerDocumento({ vehiculos, vehiculoInicial, usuario, onA
     const marcas = {}
     for (const [k] of CAMPOS) {
       vals[k] = r.campos[k] || ''
-      marcas[k] = Boolean(vals[k]) && !(v && String(v[k] ?? '').trim())
+      const actual = k === 'categoria' && v?.categoria === 'OTRO' ? '' : String(v?.[k] ?? '').trim()
+      marcas[k] = Boolean(vals[k]) && !actual
     }
     setValores(vals)
     setUsar(marcas)
@@ -88,7 +91,7 @@ export default function LeerDocumento({ vehiculos, vehiculoInicial, usuario, onA
       const datos = Object.fromEntries(CAMPOS.filter(([k]) => usar[k]).map(([k]) => [k, valores[k]]))
       const { vehiculo: v } = vehiculo
         ? await api.editarVehiculo(vehiculo.id, datos)
-        : await api.crearVehiculo({ ...datos, dominio, categoria: lectura?.campos?.tipoRegistral?.includes('REMOLQUE') ? 'ACOPLADO' : 'OTRO' })
+        : await api.crearVehiculo({ categoria: valores.categoria || 'OTRO', ...datos, dominio })
       onAplicado(v)
       setPaso('listo')
     } catch (e) {
@@ -213,15 +216,25 @@ export default function LeerDocumento({ vehiculos, vehiculoInicial, usuario, onA
                       </td>
                       <td>{nombre}</td>
                       <td>
-                        <input type="text" value={leido} placeholder="No se leyó"
-                               onChange={(e) => {
-                                 const v = e.target.value
-                                 setValores((x) => ({ ...x, [k]: v }))
-                                 setUsar((u) => ({ ...u, [k]: Boolean(v) && !igual(actual, v) }))
-                               }} />
+                        {k === 'categoria' ? (
+                          <Selector valor={leido} opciones={catalogo.categorias} placeholder="Elegí el tipo"
+                                    onCambio={(v) => {
+                                      setValores((x) => ({ ...x, categoria: v }))
+                                      setUsar((u) => ({ ...u, categoria: Boolean(v) && !igual(actual, v) }))
+                                    }} />
+                        ) : (
+                          <input type="text" value={leido} placeholder="No se leyó"
+                                 onChange={(e) => {
+                                   const v = e.target.value
+                                   setValores((x) => ({ ...x, [k]: v }))
+                                   setUsar((u) => ({ ...u, [k]: Boolean(v) && !igual(actual, v) }))
+                                 }} />
+                        )}
                       </td>
                       <td>
-                        {String(actual).trim() ? actual : <span className="apagado">vacío</span>}
+                        {String(actual).trim()
+                          ? (k === 'categoria' ? catalogo.categorias.find((c) => c.clave === actual)?.nombre || actual : actual)
+                          : <span className="apagado">vacío</span>}
                         {estado === 'distinto' && <small className="celda-detalle falta">Distinto a lo leído</small>}
                         {estado === 'igual' && <small className="celda-detalle ok-texto">Coincide</small>}
                       </td>

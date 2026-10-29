@@ -6,7 +6,7 @@
 // "reposicion de placas", dice "se le cayo la chapa".
 export const TIPOS = [
   {
-    clave: 'TRANSFERENCIA', nombre: 'Transferencia', corto: 'Transferencia',
+    clave: 'TRANSFERENCIA', nombre: 'Transferencia', corto: 'Transferencia', comprador: true,
     detalle: 'Cambio de titular por compra o venta',
     palabras: ['08', 'formulario 08', 'cambio de titular', 'titularidad', 'compra', 'venta', 'vender', 'comprador'],
   },
@@ -26,7 +26,7 @@ export const TIPOS = [
     palabras: ['cedula', 'verde', 'azul', 'tarjeta', 'autorizado', 'autorizado a conducir', 'cedula azul', 'cedula verde'],
   },
   {
-    clave: 'DENUNCIA_VENTA', nombre: 'Denuncia de venta', corto: 'Denuncia venta',
+    clave: 'DENUNCIA_VENTA', nombre: 'Denuncia de venta', corto: 'Denuncia venta', comprador: true,
     detalle: 'Se vendió y el comprador no transfirió',
     palabras: ['denuncia', 'vendido', 'vendida', 'venta', 'no transfirio', 'responsabilidad'],
   },
@@ -91,5 +91,3 @@ export const TIPOS_REGISTRALES = [
   'PICK UP', 'PICK-UP CABINA DOBLE', 'SEDAN 4 PUERTAS', 'RURAL 5 PUERTAS', 'UTILITARIO',
   'CAMION', 'TRACTOR DE CARRETERA', 'CHASIS CON CABINA', 'SEMIRREMOLQUE', 'ACOPLADO',
 ]
-
-export const ROLES = ['Tractor', 'Tolva/Acoplado', 'Dominio adicional']

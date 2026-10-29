@@ -23,7 +23,7 @@ const ANIO_MIN = 1950
 const normalizarEncabezado = (texto) => {
   const crudo = String(texto ?? '').trim()
   if (crudo === '#' || crudo === 'N°' || crudo === 'Nº') return 'numero'
-  return crudo.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase()
+  return crudo.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase()
     .replace(/[^a-z0-9]+/g, ' ').trim()
 }
 

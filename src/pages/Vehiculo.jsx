@@ -13,7 +13,7 @@ import { fechaHora } from '../formato.js'
 // [campo, etiqueta, lista del catalogo]. Con lista, el campo es un selector
 // que sugiere esos valores (y los que ya hay en la flota) pero acepta uno nuevo.
 const PLANILLA = [
-  ['unidad', 'Unidad (Nº interno)'], ['rol', 'Rol en la unidad', 'roles'], ['marca', 'Marca', 'marcasPlanilla'],
+  ['unidad', 'Unidad (Nº interno)'], ['marca', 'Marca', 'marcasPlanilla'],
   ['modelo', 'Modelo'], ['configuracion', 'Tipo / cabina'], ['anio', 'Año'], ['chofer', 'Chofer / responsable'],
   ['estado', 'Estado', 'estadosFlota'], ['titular', 'Titular', 'titulares'], ['localidad', 'Localidad', 'localidades'],
   ['sector', 'Sector', 'sectores'],
