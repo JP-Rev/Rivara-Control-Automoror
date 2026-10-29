@@ -252,7 +252,8 @@ export function interpretar(textoCrudo) {
     modeloRegistral: modelo.replace(/\s+/g, ' '),
     tipoRegistral: tipo.replace(/\s+/g, ' '),
     categoria: categoriaDeTipo(tipo),
-    marcaMotor: marcaMotor.replace(/\s+/g, ' '),
+    // Si el documento no la trae, casi siempre es la del chasis.
+    marcaMotor: (marcaMotor || (categoriaDeTipo(tipo) !== 'ACOPLADO' ? marcaChasis : '')).replace(/\s+/g, ' '),
     // El motor puede tener un espacio de verdad ("CFN 133182"): solo se
     // limpian los dobles.
     nroMotor: nroMotor.replace(/\s+/g, ' '),

@@ -12,6 +12,8 @@ const INICIAL = { q: '', gestores: false, inactivos: false }
 // el rol que le da el portal (administrador o no). Lo propio de esta app es
 // quien gestiona los tramites: eso se marca aca.
 export default function Usuarios({ usuario }) {
+  const [probando, setProbando] = useState(false)
+  const [pruebaMail, setPruebaMail] = useState(null)
   const [usuarios, setUsuarios] = useState(null)
   const [error, setError] = useState('')
   const [alta, setAlta] = useState(false)
@@ -43,6 +45,19 @@ export default function Usuarios({ usuario }) {
     }
   }
 
+  async function probarMail() {
+    setProbando(true)
+    setPruebaMail(null)
+    try {
+      const r = await api.probarAviso()
+      setPruebaMail({ ok: true, texto: `Mail de prueba enviado a ${r.para.join(', ')}.` })
+    } catch (e) {
+      setPruebaMail({ ok: false, texto: e.message })
+    } finally {
+      setProbando(false)
+    }
+  }
+
   if (!usuarios) return error ? <p className="nota error">{error}</p> : <p className="aviso">Cargando…</p>
 
   return (
@@ -56,10 +71,17 @@ export default function Usuarios({ usuario }) {
             vez que abre la app.
           </p>
         </div>
-        <button type="button" className="boton boton-chico" onClick={() => setAlta(true)}>
-          <Icono clave="mas" tamano={16} /> Agregar usuario
-        </button>
+        <div className="fila-acciones">
+          <button type="button" className="boton boton-suave boton-chico" disabled={probando} onClick={probarMail}
+                  title="Manda un mail de prueba con la configuración del aviso de transferencias">
+            {probando ? 'Mandando…' : 'Probar aviso por mail'}
+          </button>
+          <button type="button" className="boton boton-chico" onClick={() => setAlta(true)}>
+            <Icono clave="mas" tamano={16} /> Agregar usuario
+          </button>
+        </div>
       </div>
+      {pruebaMail && <p className={`nota ${pruebaMail.ok ? 'ok' : 'error'}`} role="status">{pruebaMail.texto}</p>}
 
       <div className="filtros">
         <Buscador valor={filtro.q} onCambio={(q) => setFiltro((f) => ({ ...f, q }))} placeholder="Buscá por nombre o email…" />

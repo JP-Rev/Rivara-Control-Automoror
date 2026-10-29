@@ -34,6 +34,13 @@ services:
       DDJJ_REGISTRO: ${DDJJ_REGISTRO:-}
       DNRPA_EMAIL: ${DNRPA_EMAIL:-}
       DNRPA_TELEFONO: ${DNRPA_TELEFONO:-}
+      SMTP_HABILITADO: ${SMTP_HABILITADO:-false}
+      SMTP_SERVER: ${SMTP_SERVER:-smtp.office365.com}
+      SMTP_PORT: ${SMTP_PORT:-587}
+      SMTP_USER: ${SMTP_USER:-}
+      SMTP_PASS: ${SMTP_PASS:-}
+      SMTP_FROM: ${SMTP_FROM:-}
+      AVISO_TRANSFERENCIA_PARA: ${AVISO_TRANSFERENCIA_PARA:-}
     # Disco de datos del contrato (§7): el DIRECTORIO, nunca el .db suelto.
     volumes:
       - /storage/automotor:/data

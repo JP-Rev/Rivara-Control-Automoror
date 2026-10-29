@@ -67,6 +67,7 @@ test('cedula leida por OCR', () => {
   assert.equal(r.documento, 'CEDULA')
   assert.equal(r.dominio, 'AB100CD') // la O en posicion de numero es un 0
   assert.equal(r.campos.marcaChasis, 'TOYOTA')
+  assert.equal(r.campos.marcaMotor, 'TOYOTA') // la cedula no la trae: la del chasis
   assert.equal(r.campos.modeloRegistral, 'HILUX 4X4 C/S DX 2.4 TDI 6 MT')
   assert.equal(r.campos.tipoRegistral, 'PICK-UP') // PICK- no es un codigo
   assert.equal(r.campos.categoria, 'CAMIONETA')

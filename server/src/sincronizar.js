@@ -63,12 +63,14 @@ function aplicar(fuente, registros) {
   const buscar = db.prepare('SELECT * FROM vehiculos WHERE dominio = ?')
   const insertar = db.prepare(`
     INSERT INTO vehiculos (dominio, categoria, unidad, rol, marca, modelo, configuracion, anio,
-      chofer, estado, titular, localidad, sector, marca_chasis, fuente, origen, en_planilla, sincronizado_en)
+      chofer, estado, titular, localidad, sector, marca_chasis, marca_motor, fuente, origen, en_planilla, sincronizado_en)
     VALUES (@dominio, @categoria, @unidad, @rol, @marca, @modelo, @configuracion, @anio,
-      @chofer, @estado, @titular, @localidad, @sector, @marcaChasis, @fuente, @origen, 1, @ahora)
+      @chofer, @estado, @titular, @localidad, @sector, @marcaChasis, @marcaChasis, @fuente, @origen, 1, @ahora)
   `)
   // La marca de chasis es un dato registral (se carga a mano), pero la marca
   // de la planilla la da: se completa solo si esta vacia, nunca se pisa.
+  // La marca de motor, si no esta, casi siempre es la misma: tambien se
+  // completa solo si esta vacia (un acoplado no tiene motor).
   const marcaChasis = (reg) => (reg.marca && reg.categoria !== 'ACOPLADO' ? reg.marca.toUpperCase() : '')
   let nuevos = 0
   let actualizados = 0
@@ -98,6 +100,8 @@ function aplicar(fuente, registros) {
       }
 
       if (!previo.marca_chasis && marcaChasis(reg)) cambios.marca_chasis = marcaChasis(reg)
+      const chasis = previo.marca_chasis || cambios.marca_chasis
+      if (!previo.marca_motor && chasis && previo.categoria !== 'ACOPLADO' && reg.categoria !== 'ACOPLADO') cambios.marca_motor = chasis
 
       const sets = Object.keys(cambios).map((k) => `${k} = @${k}`)
       // Un vehiculo cargado a mano que aparece en la planilla pasa a ser de

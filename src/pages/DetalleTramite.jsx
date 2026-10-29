@@ -276,6 +276,13 @@ export default function DetalleTramite({ id, catalogo, usuario, onCambio, onBorr
                 </button>
               )}
             </div>
+            {t.transferencia?.fecha && (
+              <p className="apagado">
+                Transferencia el <b>{fecha(t.transferencia.fecha + 'T12:00:00Z')}</b>
+                {t.transferencia.hora && <> a las <b>{t.transferencia.hora}</b></>}
+                {t.transferencia.hora && catalogo.avisos?.habilitado && ` · aviso por mail ${t.transferencia.avisado === `${t.transferencia.fecha} ${t.transferencia.hora}` ? 'enviado' : 'media hora antes'}`}
+              </p>
+            )}
             {t.transferencia?.solicitud08d && <p className="apagado">Solicitud tipo 08 D Nº <b>{t.transferencia.solicitud08d}</b></p>}
             <p className="apagado">Opta abonar (Disp. 142/2024):</p>
             <div className="voluntad voluntad--detalle">

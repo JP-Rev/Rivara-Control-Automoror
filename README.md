@@ -99,6 +99,12 @@ ni por nombre exacto**:
 4. Un vehículo que dejó de figurar no se borra (puede tener trámites): queda
    marcado como «ya no figura en la planilla».
 
+
+La **marca de motor**, si está vacía, se completa con la de chasis (casi
+siempre es la misma; los acoplados no tienen motor): al sincronizar, al leer
+una cédula o un título que no la trae, y en la ficha al elegir la marca de
+chasis. Nunca pisa una marca de motor ya cargada.
+
 ## DDJJ de extravío
 
 Para reposición de placas y duplicados de título o cédula **por extravío**,
@@ -137,6 +143,16 @@ como figuran en el título, uso, año, titular, Nº de título y Nº de cédula.
 
 El Nº de título y el Nº de cédula son los que pide la DDJJ de extravío: si el
 vehículo los tiene, la DDJJ los precarga.
+
+## Fecha de la transferencia y aviso por mail
+
+Al imprimir el **Anexo 08 D** se pregunta **qué día y a qué hora** es la
+transferencia: la DDJJ lleva esa fecha (no la de impresión) y queda guardada
+para reimprimirla igual. Media hora antes sale un mail a
+`AVISO_TRANSFERENCIA_PARA` con dominio, vendedor y comprador. Se manda una vez
+por turno (si se cambia la hora, se vuelve a avisar); si el servidor estaba
+apagado y el turno ya pasó, no se manda. La hora es la de Argentina,
+independiente de la zona del contenedor.
 
 ## Transferencia Digital del DNRPA (bot)
 
@@ -196,6 +212,8 @@ Todas en el `.env` al lado del compose. Ver `.env.example`.
 | `SYNC_MINUTOS` | no | Mínimo entre lecturas automáticas (10) |
 | `DDJJ_LUGAR`, `DDJJ_SECCIONAL` | no | Lo que sale en la DDJJ (editable en cada una) |
 | `DNRPA_EMAIL`, `DNRPA_TELEFONO` | no | Contacto que el bot carga en la Transferencia Digital (por defecto jreale@rivara.com.ar · 2346472000) |
+| `SMTP_HABILITADO`, `SMTP_SERVER`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | no | Aviso por mail media hora antes de cada transferencia (mismos nombres que Informar CPE). Se prueba desde Usuarios → «Probar aviso por mail» |
+| `AVISO_TRANSFERENCIA_PARA` | no | A quién va el aviso (por defecto jreale@rivara.com.ar) |
 | `AUTOMOTOR_ADMIN_EMAIL`, `AUTOMOTOR_ADMIN_PASSWORD` | no | Usuario de emergencia |
 
 > **Seguridad:** la contraseña de Windows queda escrita en el `.env` del

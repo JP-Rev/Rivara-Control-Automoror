@@ -2,7 +2,7 @@ import { useState } from 'react'
 import Modal from '../componentes/Modal.jsx'
 import Selector from '../componentes/Selector.jsx'
 import SiNo, { VOLUNTAD_DE_PAGO } from '../componentes/SiNo.jsx'
-import { hoyISO, marcaYModeloSugeridos } from '../formato.js'
+import { marcaYModeloSugeridos } from '../formato.js'
 import { Icono } from '../iconos.jsx'
 
 // DDJJ Anexo 08 D de una transferencia (Disp. D.N. 38/2018), con la voluntad
@@ -23,13 +23,16 @@ function valoresIniciales(t, catalogo) {
   const de = (campo, alternativa = '') => previo?.[campo] ?? alternativa
   return {
     lugar: de('lugar', catalogo.ddjj.lugar),
-    fecha: hoyISO(),
+    // La fecha es la de la transferencia, no la de hoy: se pregunta (y se
+    // recuerda para reimprimir igual).
+    fecha: t.transferencia?.fecha || de('fecha'),
+    hora: t.transferencia?.hora || de('hora'),
     registro: de('registro', catalogo.ddjj.registro),
     solicitud: t.transferencia?.solicitud08d || de('solicitud'),
     marca: de('marca', v?.marcaChasis || sugerido.marca),
     tipo: de('tipo', v?.tipoRegistral || ''),
     modelo: de('modelo', v?.modeloRegistral || sugerido.modelo),
-    marcaMotor: de('marcaMotor', v?.marcaMotor || ''),
+    marcaMotor: de('marcaMotor', v?.marcaMotor || (v?.categoria !== 'ACOPLADO' ? v?.marcaChasis : '') || ''),
     nroMotor: de('nroMotor', v?.nroMotor || ''),
     marcaChasis: de('marcaChasis', v?.marcaChasis || ''),
     nroChasis: de('nroChasis', v?.nroChasis || ''),
@@ -53,6 +56,8 @@ export default function Anexo08d({ tramite, catalogo, usuario, onListo, onCerrar
   async function generar(e) {
     e.preventDefault()
     setError('')
+    if (!f.fecha) return setError('Indicá qué día se hace la transferencia: la DDJJ lleva esa misma fecha.')
+    if (!f.hora) return setError('Indicá a qué hora es la transferencia: media hora antes llega el aviso por mail.')
     // La ventana se abre en el clic: si se abre despues del fetch, el
     // navegador la toma como popup no pedido y la bloquea.
     const ventana = window.open('', '_blank')
@@ -101,8 +106,23 @@ export default function Anexo08d({ tramite, catalogo, usuario, onListo, onCerrar
         </p>
 
         <div className="forma-fila">
+          <label className={!f.fecha ? 'dato-ddjj dato-ddjj--falta' : ''}>
+            ¿Qué día se hace la transferencia?
+            <input type="date" value={f.fecha} required onChange={(e) => set('fecha', e.target.value)} />
+            <small className="ayuda-campo">La DDJJ lleva esa misma fecha.</small>
+          </label>
+          <label className={!f.hora ? 'dato-ddjj dato-ddjj--falta' : ''}>
+            ¿A qué hora?
+            <input type="time" value={f.hora} required onChange={(e) => set('hora', e.target.value)} />
+            <small className="ayuda-campo">
+              {catalogo.avisos?.habilitado
+                ? `Aviso por mail a ${catalogo.avisos.para.join(', ')} media hora antes.`
+                : 'Sin aviso por mail: falta configurar el SMTP del servidor.'}
+            </small>
+          </label>
+        </div>
+        <div className="forma-fila">
           {campo('lugar', 'Lugar')}
-          {campo('fecha', 'Fecha', { tipo: 'date' })}
         </div>
         <div className="forma-fila">
           {campo('registro', 'Al Sr. Encargado del Registro Automotor', { crece: true, placeholder: 'Registro Seccional Nº 01292 - Alberti' })}

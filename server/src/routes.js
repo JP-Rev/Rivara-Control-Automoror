@@ -19,6 +19,7 @@ import { extraerTexto, extraerTextosTarjeta, interpretar } from './documentos.js
 import { interpretarDni, partirDomicilio } from './dni.js'
 import { CONTACTO_DNRPA, datosDnrpa } from './dnrpa.js'
 import { armarZip } from './zip.js'
+import { enviarMail, estadoAvisos } from './avisos.js'
 import { CAMPOS_PLANILLA, estadoSincronizacion, sincronizar } from './sincronizar.js'
 
 export const api = Router()
@@ -124,6 +125,8 @@ api.get('/catalogo', (_req, res) => {
     camposRegistrales: CAMPOS_REGISTRALES, documentosDdjj: DOCUMENTOS_DDJJ,
     // Contacto que el bot carga en la Transferencia Digital, siempre el mismo.
     dnrpa: { email: CONTACTO_DNRPA.email(), telefono: CONTACTO_DNRPA.telefono() },
+    // Aviso por mail antes de una transferencia: si esta configurado y a quien va.
+    avisos: estadoAvisos(),
     ddjj: {
       lugar: process.env.DDJJ_LUGAR || 'Buenos Aires',
       seccional: process.env.DDJJ_SECCIONAL || '',
@@ -752,6 +755,18 @@ api.get('/dnrpa/bot.zip', (_req, res) => {
   }
 })
 
+// Mail de prueba del aviso de transferencias, para verificar el SMTP.
+api.post('/avisos/prueba', requireAdmin, async (_req, res) => {
+  const estado = estadoAvisos()
+  if (!estado.habilitado) return res.status(400).json({ error: 'El aviso por mail está apagado: falta SMTP_HABILITADO=true y SMTP_FROM en el .env.' })
+  try {
+    await enviarMail({ asunto: 'Prueba: avisos de Trámites del Registro Automotor', texto: 'Si llegó este mail, los avisos de transferencias funcionan.' })
+    res.json({ ok: true, para: estado.para })
+  } catch (e) {
+    res.status(502).json({ error: `No se pudo mandar: ${e.message}` })
+  }
+})
+
 // Anexo 08 D de una transferencia. Recibe lo que se ve en el formulario,
 // guarda en el tramite lo impreso (y la voluntad de pago), y devuelve el PDF.
 api.post('/tramites/:id/anexo08d', async (req, res) => {
@@ -765,7 +780,8 @@ api.post('/tramites/:id/anexo08d', async (req, res) => {
   const b = req.body || {}
   const datos = {
     lugar: texto(b.lugar, 60),
-    fecha: /^\d{4}-\d{2}-\d{2}$/.test(b.fecha || '') ? b.fecha : new Date().toISOString().slice(0, 10),
+    fecha: /^\d{4}-\d{2}-\d{2}$/.test(b.fecha || '') ? b.fecha : '',
+    hora: /^([01]\d|2[0-3]):[0-5]\d$/.test(b.hora || '') ? b.hora : '',
     registro: texto(b.registro, 90),
     solicitud: texto(b.solicitud, 40).toUpperCase(),
     dominio: t.dominio,
@@ -776,10 +792,15 @@ api.post('/tramites/:id/anexo08d', async (req, res) => {
     sellos: siNo(b.sellos), patentes: siNo(b.patentes), infracciones: siNo(b.infracciones),
   }
 
+  // Lleva la fecha de la transferencia, no la de impresion: se pregunta.
+  if (!datos.fecha) return res.status(400).json({ error: 'Indicá qué día se hace la transferencia: la DDJJ lleva esa misma fecha.' })
+
   db.transaction(() => {
     const previo = t.transferencia ? JSON.parse(t.transferencia) : {}
     const nuevo = {
       ...limpiarTransferencia({ solicitud08d: datos.solicitud, sellos: datos.sellos, patentes: datos.patentes, infracciones: datos.infracciones }, previo),
+      fecha: datos.fecha,
+      hora: datos.hora,
       anexo: datos,
     }
     db.prepare("UPDATE tramites SET transferencia = ?, actualizado_en = datetime('now') WHERE id = ?").run(JSON.stringify(nuevo), t.id)

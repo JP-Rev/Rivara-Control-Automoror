@@ -424,7 +424,7 @@ label.check input { width: 16px; height: 16px; }
 
 h1, h2, h3, h4 { margin: 0; text-wrap: balance; }
 textarea { resize: vertical; min-height: 44px; line-height: 1.45; }
-input[type="date"] { width: 100%; padding: 10px 14px; font: inherit; font-size: 15px; color: var(--rv-texto); background: var(--rv-surface); border: 1px solid var(--rv-tint-borde); border-radius: var(--rv-r-md); }
+input[type="date"], input[type="time"] { width: 100%; padding: 10px 14px; font: inherit; font-size: 15px; color: var(--rv-texto); background: var(--rv-surface); border: 1px solid var(--rv-tint-borde); border-radius: var(--rv-r-md); }
 input[readonly] { background: var(--rv-bg); color: var(--rv-texto-2); }
 .ok-texto { color: var(--rv-verde-osc); font-weight: 700; font-size: 12.5px; }
 .falta { color: var(--rv-bordo); font-weight: 700; font-size: 12.5px; }

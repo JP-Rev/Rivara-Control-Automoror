@@ -81,3 +81,4 @@ export async function leerDni(archivo) {
 export const faltanDnrpa = (id) => pedir(`/tramites/${id}/dnrpa?ver=1`)
 export const urlDatosDnrpa = (id) => `/api/tramites/${id}/dnrpa`
 export const URL_BOT_DNRPA = '/api/dnrpa/bot.zip'
+export const probarAviso = () => pedir('/avisos/prueba', { method: 'POST' })

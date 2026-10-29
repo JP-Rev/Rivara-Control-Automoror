@@ -30,6 +30,7 @@ const insertar = db.prepare("INSERT INTO vehiculos (dominio, categoria, marca, m
 insertar.run('AE229CF', 'Toyota Hilux', 'DX Pack 2.5', '')
 insertar.run('AE229CE', 'Toyota', 'HILUX SRV 2.8', 'TOYOTA ARGENTINA')
 insertar.run('AE622BG', '', '', '')
+db.prepare("UPDATE vehiculos SET marca_motor = 'FPT' WHERE dominio = 'AE229CE'").run()
 
 test('la sincronizacion no reemplaza un modelo que ya esta', async () => {
   const r = await sincronizar({ forzar: true })
@@ -39,14 +40,17 @@ test('la sincronizacion no reemplaza un modelo que ya esta', async () => {
   assert.equal(v('AE229CF').marca, 'Toyota')
   assert.equal(v('AE229CF').modelo, 'Hilux DX Pack 2.5')
   assert.equal(v('AE229CF').marca_chasis, 'TOYOTA')
+  assert.equal(v('AE229CF').marca_motor, 'TOYOTA') // vacia: la del chasis
 
   assert.equal(v('AE229CE').modelo, 'HILUX SRV 2.8')
   assert.equal(v('AE229CE').marca_chasis, 'TOYOTA ARGENTINA')
+  assert.equal(v('AE229CE').marca_motor, 'FPT') // cargada: no se pisa
   assert.equal(v('AE229CE').chofer, 'B') // el resto si se actualiza
 
   assert.equal(v('AE622BG').marca, 'Volkswagen')
   assert.equal(v('AE622BG').modelo, 'Amarok TDI 140cv')
   assert.equal(v('AE622BH').modelo, 'Amarok TDI 140cv')
+  assert.equal(v('AE622BH').marca_motor, 'VOLKSWAGEN') // nuevo
 })
 
 test.after(() => fs.rmSync(dir, { recursive: true, force: true }))

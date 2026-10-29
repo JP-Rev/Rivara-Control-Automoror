@@ -177,4 +177,14 @@ export function migrate() {
   if (!deTramites.has('comprador')) db.exec('ALTER TABLE tramites ADD COLUMN comprador TEXT')
   if (!deTramites.has('transferencia')) db.exec('ALTER TABLE tramites ADD COLUMN transferencia TEXT')
   if (!deTramites.has('vendedor')) db.exec('ALTER TABLE tramites ADD COLUMN vendedor TEXT')
+
+  // Cambios de datos que se hacen una sola vez (PRAGMA user_version).
+  const version = db.pragma('user_version', { simple: true })
+  if (version < 1) {
+    // Marca de motor vacia = la del chasis: casi siempre es la misma. Solo
+    // completa vacios; un acoplado no tiene motor.
+    db.exec(`UPDATE vehiculos SET marca_motor = marca_chasis
+             WHERE marca_motor = '' AND marca_chasis <> '' AND categoria <> 'ACOPLADO'`)
+    db.pragma('user_version = 1')
+  }
 }

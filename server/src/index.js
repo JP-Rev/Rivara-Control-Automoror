@@ -7,6 +7,7 @@ import { migrate } from './db.js'
 import { seed } from './seed.js'
 import { api } from './routes.js'
 import { sincronizar } from './sincronizar.js'
+import { iniciarAvisos } from './avisos.js'
 
 const aqui = path.dirname(fileURLToPath(import.meta.url))
 const PUBLIC_DIR = process.env.PUBLIC_DIR || path.resolve(aqui, '../../dist')
@@ -49,4 +50,5 @@ app.listen(PORT, '0.0.0.0', () => {
   // Si \\server no responde, la app levanta igual y el error queda visible en
   // la pantalla de Flota.
   sincronizar({ forzar: true }).catch((e) => console.warn('Sincronizacion inicial:', e.message))
+  iniciarAvisos()
 })

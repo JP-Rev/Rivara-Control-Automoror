@@ -44,7 +44,16 @@ export default function Vehiculo({ vehiculo, catalogo, usuario, tramites, onGuar
   const manuales = new Set((nuevo ? [] : vehiculo.manuales || []).map((c) => COLUMNA_A_CAMPO[c] || c))
   const delDominio = nuevo ? [] : tramites.filter((t) => t.dominio === vehiculo.dominio)
 
-  const set = (k, v) => { setF((x) => ({ ...x, [k]: v })); setListo(false) }
+  const set = (k, v) => {
+    setF((x) => {
+      const n = { ...x, [k]: v }
+      // La marca de motor casi siempre es la del chasis: la sigue mientras
+      // no se haya escrito otra (un acoplado no tiene motor).
+      if (k === 'marcaChasis' && x.categoria !== 'ACOPLADO' && (!x.marcaMotor || x.marcaMotor === x.marcaChasis)) n.marcaMotor = v
+      return n
+    })
+    setListo(false)
+  }
 
   async function guardar(e, extra = {}) {
     e?.preventDefault()
