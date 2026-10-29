@@ -621,8 +621,10 @@ code { font-size: 12px; padding: 1px 6px; border-radius: 6px; background: var(--
 
 .filas { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; }
 
-.fila-tramite { position: relative; border-top: 1px solid var(--rv-tint-borde); }
-.fila-tramite:first-child { border-top: 0; }
+.fila-tramite { position: relative; border-radius: var(--rv-r-sm); background: var(--rv-bg); }
+/* Cada tramite en su recuadro, separado del siguiente: se distinguen sin
+   tener que pasar el mouse. */
+.fila-tramite + .fila-tramite { margin-top: 8px; }
 
 /* Grilla con areas con nombre: en chico se reacomoda declarando donde va cada
    cosa, en vez de confiar en como caiga un flex-wrap. */
@@ -643,7 +645,7 @@ code { font-size: 12px; padding: 1px 6px; border-radius: 6px; background: var(--
   color: var(--rv-texto);
   cursor: pointer;
 }
-.fila-cuerpo:hover { background: var(--rv-bg); }
+.fila-cuerpo:hover { background: var(--rv-tint); }
 .fila-num { grid-area: num; font-size: 12.5px; font-weight: 700; color: var(--rv-texto-4); }
 .fila-dominio { grid-area: dominio; display: flex; flex-direction: column; min-width: 0; }
 .fila-dominio small, .fila-tipo small { font-size: 12px; color: var(--rv-texto-3); overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
