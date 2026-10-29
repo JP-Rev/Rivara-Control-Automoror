@@ -38,6 +38,9 @@ COPY server/package.json ./server/package.json
 COPY server/src ./server/src
 # Formularios en blanco sobre los que se escribe (Anexo 08 D).
 COPY server/plantillas ./server/plantillas
+# El bot de la Transferencia Digital del DNRPA: no corre aca, se baja como
+# .zip desde la app (GET /api/dnrpa/bot.zip) y corre en la PC.
+COPY bot-dnrpa ./bot-dnrpa
 COPY --from=build /app/dist ./dist
 ENV PUBLIC_DIR=/app/dist
 EXPOSE 80

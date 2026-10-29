@@ -1,13 +1,22 @@
 import { useCallback, useEffect, useState } from 'react'
 import * as api from '../api.js'
 import { EstadoChip } from '../componentes/Estado.jsx'
-import Comprador from './Comprador.jsx'
+import Dnrpa from './Dnrpa.jsx'
+import Persona from './Persona.jsx'
 import SiNo, { VOLUNTAD_DE_PAGO } from '../componentes/SiNo.jsx'
 import { resumenVehiculo } from '../componentes/DominioInput.jsx'
 import Modal from '../componentes/Modal.jsx'
 import Selector from '../componentes/Selector.jsx'
 import { fecha, fechaHora, haceCuanto } from '../formato.js'
 import { Icono } from '../iconos.jsx'
+
+// "SAN MARTIN 100 piso 2 dto B · ALBERTI, ALBERTI, BUENOS AIRES (6634)"
+function domicilioTexto(c) {
+  const calle = [c.calle, c.numero, c.piso && `piso ${c.piso}`, c.depto && `dto ${c.depto}`].filter(Boolean).join(' ')
+  const lugar = [...new Set([c.localidad, c.partido])].filter(Boolean).concat(c.provincia || []).join(', ')
+  const texto = [calle, lugar].filter(Boolean).join(' · ')
+  return texto ? `${texto}${c.cp ? ` (${c.cp})` : ''}` : c.domicilio || ''
+}
 
 const ACCIONES_EVENTO = {
   CREADO: 'cargó el trámite',
@@ -29,7 +38,8 @@ export default function DetalleTramite({ id, catalogo, usuario, onCambio, onBorr
   const [editando, setEditando] = useState(false)
   const [edicion, setEdicion] = useState({})
   const [confirmarBorrar, setConfirmarBorrar] = useState(false)
-  const [compradorAbierto, setCompradorAbierto] = useState(false)
+  const [parte, setParte] = useState(null) // 'comprador' | 'vendedor'
+  const [dnrpaAbierto, setDnrpaAbierto] = useState(false)
 
   const cargar = useCallback(async () => {
     try {
@@ -171,13 +181,53 @@ export default function DetalleTramite({ id, catalogo, usuario, onCambio, onBorr
           </section>
         )}
 
+        {/* ---- Vendedor (transferencias) ---- */}
+        {def?.vendedor && (
+          <section className="detalle-bloque">
+            <div className="fila-acciones">
+              <h4 className="rv-eyebrow">Vendedor</h4>
+              {puedeCargarComprador && (
+                <button type="button" className={`boton boton-chico ${t.vendedor ? 'boton-suave' : ''}`} onClick={() => setParte('vendedor')}>
+                  <Icono clave="perfil" tamano={16} /> {t.vendedor ? 'Editar' : 'Cargar'}
+                </button>
+              )}
+            </div>
+            {t.vendedor ? (
+              <div className="comprador">
+                {t.vendedor.tipo === 'JURIDICA' ? (
+                  <>
+                    <p><b>{t.vendedor.razonSocial}</b></p>
+                    <p className="apagado">{['Persona jurídica', t.vendedor.cuil && `CUIT ${t.vendedor.cuil}`].filter(Boolean).join(' · ')}</p>
+                  </>
+                ) : (
+                  <>
+                    <p>
+                      <b>{[t.vendedor.apellido, t.vendedor.nombres].filter(Boolean).join(', ')}</b>
+                      {t.vendedor.verificado && <span className="pastilla">DNI verificado</span>}
+                    </p>
+                    <p className="apagado">
+                      {[
+                        t.vendedor.dni && `DNI ${Number(t.vendedor.dni).toLocaleString('es-AR')}`,
+                        t.vendedor.cuil && `CUIT ${t.vendedor.cuil}`,
+                        t.vendedor.estadoCivil && `${t.vendedor.estadoCivil} al comprarlo`,
+                      ].filter(Boolean).join(' · ')}
+                    </p>
+                  </>
+                )}
+              </div>
+            ) : (
+              <p className="apagado">Todavía no hay datos del vendedor{t.vehiculo?.titular ? ` (titular en la flota: ${t.vehiculo.titular})` : ''}.</p>
+            )}
+          </section>
+        )}
+
         {/* ---- Comprador (transferencias y denuncias de venta) ---- */}
         {def?.comprador && (
           <section className="detalle-bloque">
             <div className="fila-acciones">
               <h4 className="rv-eyebrow">Comprador</h4>
               {puedeCargarComprador && (
-                <button type="button" className={`boton boton-chico ${t.comprador ? 'boton-suave' : ''}`} onClick={() => setCompradorAbierto(true)}>
+                <button type="button" className={`boton boton-chico ${t.comprador ? 'boton-suave' : ''}`} onClick={() => setParte('comprador')}>
                   <Icono clave="perfil" tamano={16} /> {t.comprador ? 'Editar' : 'Cargar desde el DNI'}
                 </button>
               )}
@@ -194,9 +244,17 @@ export default function DetalleTramite({ id, catalogo, usuario, onCambio, onBorr
                     t.comprador.cuil && `CUIL ${t.comprador.cuil}`,
                     t.comprador.fechaNacimiento && `nac. ${fecha(t.comprador.fechaNacimiento + 'T12:00:00Z')}`,
                     t.comprador.nacionalidad,
+                    t.comprador.estadoCivil,
+                    t.comprador.ocupacion,
                   ].filter(Boolean).join(' · ')}
                 </p>
-                {t.comprador.domicilio && <p className="apagado">{t.comprador.domicilio}</p>}
+                {t.comprador.estadoCivil === 'Casado' && t.comprador.conyugeApellido && (
+                  <p className="apagado">
+                    Cónyuge: {[t.comprador.conyugeApellido, t.comprador.conyugeNombre].filter(Boolean).join(', ')}
+                    {t.comprador.caracterBien && ` · bien ${t.comprador.caracterBien.toLowerCase()}`}
+                  </p>
+                )}
+                {domicilioTexto(t.comprador) && <p className="apagado">{domicilioTexto(t.comprador)}</p>}
                 {(t.comprador.telefono || t.comprador.email) && (
                   <p className="apagado">{[t.comprador.telefono, t.comprador.email].filter(Boolean).join(' · ')}</p>
                 )}
@@ -226,6 +284,19 @@ export default function DetalleTramite({ id, catalogo, usuario, onCambio, onBorr
                       onCambio={(v) => hacer(() => api.editarTramite(t.id, { transferencia: { [k]: v } }))} />
               ))}
             </div>
+          </section>
+        )}
+
+        {/* ---- Transferencia Digital del DNRPA (el bot) ---- */}
+        {def?.vendedor && puedeCargarComprador && (
+          <section className="detalle-bloque">
+            <div className="fila-acciones">
+              <h4 className="rv-eyebrow">Transferencia Digital</h4>
+              <button type="button" className="boton boton-chico" onClick={() => setDnrpaAbierto(true)}>
+                <Icono clave="descarga" tamano={16} /> Cargar en el DNRPA
+              </button>
+            </div>
+            <p className="apagado">Un bot completa los campos del sitio del DNRPA con el vendedor, el comprador y el vehículo. Los botones y el captcha, vos.</p>
           </section>
         )}
 
@@ -372,10 +443,11 @@ export default function DetalleTramite({ id, catalogo, usuario, onCambio, onBorr
           </form>
         </section>
 
-        {compradorAbierto && (
-          <Comprador tramite={t} onCerrar={() => setCompradorAbierto(false)}
-                     onGuardado={(r) => { setDatos(r); onCambio(r.tramite); setCompradorAbierto(false) }} />
+        {parte && (
+          <Persona tramite={t} rol={parte} catalogo={catalogo} onCerrar={() => setParte(null)}
+                   onGuardado={(r) => { setDatos(r); onCambio(r.tramite); setParte(null) }} />
         )}
+        {dnrpaAbierto && <Dnrpa tramite={t} catalogo={catalogo} onCerrar={() => setDnrpaAbierto(false)} />}
 
         {(puedeEditar || puedeBorrar) && !editando && (
           <footer className="detalle-pie">

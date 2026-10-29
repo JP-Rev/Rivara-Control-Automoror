@@ -75,3 +75,9 @@ export async function leerDni(archivo) {
   if (!res.ok) throw new Error(cuerpo.error || 'No se pudo leer el DNI')
   return cuerpo
 }
+
+// Transferencia Digital del DNRPA: lo que falta cargar antes de bajar los
+// datos para el bot. Los archivos se bajan con un <a download> directo.
+export const faltanDnrpa = (id) => pedir(`/tramites/${id}/dnrpa?ver=1`)
+export const urlDatosDnrpa = (id) => `/api/tramites/${id}/dnrpa`
+export const URL_BOT_DNRPA = '/api/dnrpa/bot.zip'

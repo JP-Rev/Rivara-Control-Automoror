@@ -177,6 +177,38 @@ function leerFrente(texto) {
   }
 }
 
+const PROVINCIAS_DNI = { 'CAPITAL FEDERAL': 'CIUDAD AUTONOMA DE BUENOS AIRES', CABA: 'CIUDAD AUTONOMA DE BUENOS AIRES', 'C.A.B.A.': 'CIUDAD AUTONOMA DE BUENOS AIRES' }
+
+/**
+ * Parte el domicilio del DNI en los campos que pide el DNRPA:
+ *   "SAN MARTIN 100 PISO 2 DTO B - ALBERTI - ALBERTI - BUENOS AIRES"
+ *   -> calle, numero, piso, depto, localidad, partido, provincia
+ * El orden del DNI es calle - localidad - partido - provincia; con tres
+ * partes, el partido es la localidad. El codigo postal no esta en el DNI.
+ */
+export function partirDomicilio(domicilio) {
+  const vacio = { calle: '', numero: '', piso: '', depto: '', localidad: '', partido: '', provincia: '', cp: '' }
+  const partes = sinTildes(String(domicilio || '')).toUpperCase().split(/\s+-\s+/).map((x) => x.trim()).filter(Boolean)
+  if (!partes.length) return vacio
+  const r = { ...vacio }
+  if (partes.length >= 2) {
+    const prov = partes.pop()
+    r.provincia = PROVINCIAS_DNI[prov] || prov
+    const medio = partes.slice(1)
+    r.partido = medio.at(-1) || ''
+    r.localidad = medio.at(-2) || r.partido
+  }
+  let calle = partes[0]
+  const piso = calle.match(/\bPISO\s*:?\s*(\w+)/)
+  if (piso) { r.piso = piso[1]; calle = calle.replace(piso[0], ' ') }
+  const depto = calle.match(/\b(?:DTO|DPTO|DEPTO|DEP|DPT)\.?\s*:?\s*(\w+)/)
+  if (depto) { r.depto = depto[1]; calle = calle.replace(depto[0], ' ') }
+  calle = calle.replace(/\s+/g, ' ').trim()
+  const nro = calle.match(/^(.+?)\s+(\d+[A-Z]?|S\/N|SN)$/)
+  if (nro) { r.calle = nro[1].trim(); r.numero = nro[2] === 'SN' ? 'S/N' : nro[2] } else r.calle = calle
+  return r
+}
+
 /**
  * @param {string[]} textos  lecturas del mismo documento (la imagen entera y
  *                           la tarjeta recortada); se queda con la mejor
@@ -205,5 +237,5 @@ export function interpretarDni(textos) {
   if (persona.vencimiento && persona.vencimiento < new Date().toISOString().slice(0, 10)) {
     avisos.push(`El DNI venció el ${persona.vencimiento.split('-').reverse().join('/')}.`)
   }
-  return { persona: { ...persona, cuil, cuilCalculado: Boolean(cuil) }, verificado, avisos }
+  return { persona: { ...persona, ...partirDomicilio(domicilio), cuil, cuilCalculado: Boolean(cuil) }, verificado, avisos }
 }

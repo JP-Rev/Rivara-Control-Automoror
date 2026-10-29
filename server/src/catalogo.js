@@ -6,7 +6,7 @@
 // "reposicion de placas", dice "se le cayo la chapa".
 export const TIPOS = [
   {
-    clave: 'TRANSFERENCIA', nombre: 'Transferencia', corto: 'Transferencia', comprador: true, anexo08d: true,
+    clave: 'TRANSFERENCIA', nombre: 'Transferencia', corto: 'Transferencia', comprador: true, vendedor: true, anexo08d: true,
     detalle: 'Cambio de titular por compra o venta',
     palabras: ['08', 'formulario 08', 'cambio de titular', 'titularidad', 'compra', 'venta', 'vender', 'comprador'],
   },
@@ -90,4 +90,14 @@ export const USOS = ['PRIVADO', 'PRIV. TRANSP. DE CARGA INTERJ.', 'PÚBLICO', 'O
 export const TIPOS_REGISTRALES = [
   'PICK UP', 'PICK-UP CABINA DOBLE', 'SEDAN 4 PUERTAS', 'RURAL 5 PUERTAS', 'UTILITARIO',
   'CAMION', 'TRACTOR DE CARRETERA', 'CHASIS CON CABINA', 'SEMIRREMOLQUE', 'ACOPLADO',
+]
+
+// Opciones como las muestra el sitio de la Transferencia Digital del DNRPA:
+// el bot elige la opcion por este texto (bot-dnrpa/dnrpa.mjs).
+export const ESTADOS_CIVILES = ['Soltero', 'Casado', 'Viudo', 'Divorciado']
+export const CARACTER_BIEN = ['Ganancial', 'Propio']
+export const PROVINCIAS = [
+  'BUENOS AIRES', 'CIUDAD AUTONOMA DE BUENOS AIRES', 'CATAMARCA', 'CHACO', 'CHUBUT', 'CORDOBA', 'CORRIENTES',
+  'ENTRE RIOS', 'FORMOSA', 'JUJUY', 'LA PAMPA', 'LA RIOJA', 'MENDOZA', 'MISIONES', 'NEUQUEN', 'RIO NEGRO',
+  'SALTA', 'SAN JUAN', 'SAN LUIS', 'SANTA CRUZ', 'SANTA FE', 'SANTIAGO DEL ESTERO', 'TIERRA DEL FUEGO', 'TUCUMAN',
 ]

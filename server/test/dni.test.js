@@ -1,6 +1,6 @@
 import { test } from 'node:test'
 import assert from 'node:assert/strict'
-import { calcularCuil, digitoControl, interpretarDni } from '../src/dni.js'
+import { calcularCuil, digitoControl, interpretarDni, partirDomicilio } from '../src/dni.js'
 
 // Un DNI inventado, con los digitos de control calculados como los calcula
 // el Registro de las Personas (OACI 9303, formato TD1).
@@ -20,6 +20,8 @@ test('dorso del DNI: MRZ verificada', () => {
       apellido: 'Perez Gomez', nombres: 'Ana Maria', dni: '12345678', sexo: 'F',
       fechaNacimiento: '1990-02-15', nacionalidad: 'Argentina', vencimiento: '2030-01-01',
       domicilio: 'SAN MARTIN 100 - ALBERTI - ALBERTI - BUENOS AIRES',
+      calle: 'SAN MARTIN', numero: '100', piso: '', depto: '', localidad: 'ALBERTI', partido: 'ALBERTI',
+      provincia: 'BUENOS AIRES', cp: '',
       cuil: calcularCuil('12345678', 'F'), cuilCalculado: true,
     },
   )
@@ -53,4 +55,16 @@ test('CUIL calculado', () => {
 test('sin MRZ ni frente reconocible', () => {
   const r = interpretarDni(['una foto cualquiera'])
   assert.equal(r.persona, null)
+})
+
+test('domicilio del DNI partido en los campos del DNRPA', () => {
+  assert.deepEqual(partirDomicilio('AV. 9 DE JULIO 1234 PISO 3 DTO B - PLATANOS - BERAZATEGUI - BUENOS AIRES'), {
+    calle: 'AV. 9 DE JULIO', numero: '1234', piso: '3', depto: 'B', localidad: 'PLATANOS', partido: 'BERAZATEGUI',
+    provincia: 'BUENOS AIRES', cp: '',
+  })
+  const caba = partirDomicilio('CORRIENTES 500 - CAPITAL FEDERAL')
+  assert.equal(caba.provincia, 'CIUDAD AUTONOMA DE BUENOS AIRES')
+  assert.equal(caba.calle, 'CORRIENTES')
+  assert.equal(partirDomicilio('RUTA 5 S/N - ALBERTI - BUENOS AIRES').numero, 'S/N')
+  assert.equal(partirDomicilio('').calle, '')
 })

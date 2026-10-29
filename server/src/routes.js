@@ -1,19 +1,24 @@
 import express, { Router } from 'express'
 import crypto from 'node:crypto'
+import fs from 'node:fs'
+import path from 'node:path'
+import { fileURLToPath } from 'node:url'
 import { db } from './db.js'
 import {
   COOKIE_LOCAL, cookieOptions, esGestor, firmarTokenLocal, hashPassword,
   requireAdmin, requireAuth, requireGestor, sesionOpcional, usuarioPublico, verificarPassword,
 } from './auth.js'
 import {
-  CAMPOS_REGISTRALES, CATEGORIAS, ESTADOS, MARCAS, MARCAS_MOTOR, MOTIVOS, TIPOS, TIPOS_REGISTRALES, USOS,
-  claves, tipoDe,
+  CAMPOS_REGISTRALES, CARACTER_BIEN, CATEGORIAS, ESTADOS, ESTADOS_CIVILES, MARCAS, MARCAS_MOTOR, MOTIVOS, PROVINCIAS,
+  TIPOS, TIPOS_REGISTRALES, USOS, claves, tipoDe,
 } from './catalogo.js'
 import { dominioValido, normalizarDominio } from './dominio.js'
 import { DOCUMENTOS_DDJJ, generarDDJJ } from './ddjj.js'
 import { generarAnexo08D } from './anexo08d.js'
 import { extraerTexto, extraerTextosTarjeta, interpretar } from './documentos.js'
-import { interpretarDni } from './dni.js'
+import { interpretarDni, partirDomicilio } from './dni.js'
+import { CONTACTO_DNRPA, datosDnrpa } from './dnrpa.js'
+import { armarZip } from './zip.js'
 import { CAMPOS_PLANILLA, estadoSincronizacion, sincronizar } from './sincronizar.js'
 
 export const api = Router()
@@ -111,9 +116,14 @@ api.get('/catalogo', (_req, res) => {
       localidades: lista([], 'localidad'),
       sectores: lista([], 'sector'),
       estadosFlota: lista([], 'estado'),
+      estadosCiviles: ESTADOS_CIVILES,
+      caracterBien: CARACTER_BIEN,
+      provincias: PROVINCIAS,
     },
     tipos: TIPOS, motivos: MOTIVOS, estados: ESTADOS, categorias: CATEGORIAS,
     camposRegistrales: CAMPOS_REGISTRALES, documentosDdjj: DOCUMENTOS_DDJJ,
+    // Contacto que el bot carga en la Transferencia Digital, siempre el mismo.
+    dnrpa: { email: CONTACTO_DNRPA.email(), telefono: CONTACTO_DNRPA.telefono() },
     ddjj: {
       lugar: process.env.DDJJ_LUGAR || 'Buenos Aires',
       seccional: process.env.DDJJ_SECCIONAL || '',
@@ -324,6 +334,14 @@ const SELECT_TRAMITE = `
     LEFT JOIN vehiculos v ON v.dominio = t.dominio
 `
 
+// Compradores cargados antes de que el domicilio se guardara por partes:
+// se parte el del DNI al vuelo.
+function conDomicilioPartido(c) {
+  if (c.calle || c.localidad || !c.domicilio) return c
+  const partes = partirDomicilio(c.domicilio)
+  return { ...c, ...Object.fromEntries(Object.entries(partes).filter(([k, v]) => v && !c[k])) }
+}
+
 function tramitePublico(t, vehiculos) {
   const v = t.v_id ? vehiculos.get(t.v_id) : null
   return {
@@ -344,7 +362,8 @@ function tramitePublico(t, vehiculos) {
     ultimoMovimiento: t.ultimo_movimiento || t.creado_en,
     notas: t.notas,
     ddjj: t.ddjj ? JSON.parse(t.ddjj) : null,
-    comprador: t.comprador ? JSON.parse(t.comprador) : null,
+    comprador: t.comprador ? conDomicilioPartido(JSON.parse(t.comprador)) : null,
+    vendedor: t.vendedor ? JSON.parse(t.vendedor) : null,
     transferencia: t.transferencia ? JSON.parse(t.transferencia) : null,
     vehiculo: v ? vehiculoPublico(v) : null,
   }
@@ -396,7 +415,13 @@ function cargarTramite(req, res) {
 // es de quien lo gestiona.
 const puedeEditar = (u, t) => esGestor(u) || (t.solicitante_id === u.id && !t.gestor_id && t.estado === 'SOLICITADO')
 
-const CAMPOS_COMPRADOR = ['apellido', 'nombres', 'dni', 'cuil', 'sexo', 'fechaNacimiento', 'nacionalidad', 'domicilio', 'telefono', 'email']
+const CAMPOS_COMPRADOR = [
+  'apellido', 'nombres', 'dni', 'cuil', 'sexo', 'fechaNacimiento', 'nacionalidad', 'domicilio', 'telefono', 'email',
+  'estadoCivil', 'ocupacion',
+  // Domicilio por partes, como lo pide la Transferencia Digital.
+  'calle', 'numero', 'piso', 'depto', 'localidad', 'partido', 'provincia', 'cp',
+  'conyugeDni', 'conyugeNombre', 'conyugeApellido', 'caracterBien',
+]
 function limpiarComprador(c) {
   const salida = {}
   for (const k of CAMPOS_COMPRADOR) salida[k] = texto(c?.[k], 160)
@@ -404,9 +429,26 @@ function limpiarComprador(c) {
   salida.cuil = salida.cuil.replace(/[^\d-]/g, '')
   salida.sexo = ['M', 'F', 'X'].includes(salida.sexo) ? salida.sexo : ''
   if (salida.fechaNacimiento && !/^\d{4}-\d{2}-\d{2}$/.test(salida.fechaNacimiento)) salida.fechaNacimiento = ''
+  if (!ESTADOS_CIVILES.includes(salida.estadoCivil)) salida.estadoCivil = ''
+  if (!CARACTER_BIEN.includes(salida.caracterBien)) salida.caracterBien = ''
+  salida.conyugeDni = salida.conyugeDni.replace(/\D/g, '')
   // Marca de como se cargo, para el seguimiento: leido de un DNI y
   // verificado con los digitos de control, o escrito a mano.
   salida.verificado = Boolean(c?.verificado)
+  return salida
+}
+
+// Quien vende en una transferencia: persona fisica (DNI, CUIT, estado civil
+// al comprar el vehiculo) o juridica (razon social y CUIT).
+const CAMPOS_VENDEDOR = ['tipo', 'apellido', 'nombres', 'dni', 'cuil', 'estadoCivil', 'razonSocial']
+function limpiarVendedor(v) {
+  const salida = {}
+  for (const k of CAMPOS_VENDEDOR) salida[k] = texto(v?.[k], 160)
+  salida.tipo = salida.tipo === 'JURIDICA' ? 'JURIDICA' : 'FISICA'
+  salida.dni = salida.dni.replace(/\D/g, '')
+  salida.cuil = salida.cuil.replace(/[^\d-]/g, '')
+  if (!ESTADOS_CIVILES.includes(salida.estadoCivil)) salida.estadoCivil = ''
+  salida.verificado = Boolean(v?.verificado)
   return salida
 }
 
@@ -470,9 +512,9 @@ api.post('/tramites', (req, res) => {
 api.patch('/tramites/:id', (req, res) => {
   const t = cargarTramite(req, res)
   if (!t) return
-  // Solo los datos del comprador: los puede cargar tambien quien lo pidio,
+  // Solo los datos de las partes: los puede cargar tambien quien lo pidio,
   // aunque ya lo haya tomado alguien (suele ser quien tiene el DNI).
-  const soloComprador = Object.keys(req.body || {}).every((k) => k === 'comprador' || k === 'transferencia')
+  const soloComprador = Object.keys(req.body || {}).every((k) => ['comprador', 'vendedor', 'transferencia'].includes(k))
   const puedeComprador = soloComprador && (esGestor(req.usuario) || t.solicitante_id === req.usuario.id)
   if (!puedeEditar(req.usuario, t) && !puedeComprador) {
     return res.status(403).json({ error: 'Ya lo tomó quien gestiona: pedile el cambio con una nota' })
@@ -501,6 +543,11 @@ api.patch('/tramites/:id', (req, res) => {
   } else {
     nuevo.comprador = t.comprador
   }
+  if (req.body?.vendedor !== undefined) {
+    nuevo.vendedor = req.body.vendedor ? JSON.stringify(limpiarVendedor(req.body.vendedor)) : null
+  } else {
+    nuevo.vendedor = t.vendedor
+  }
   nuevo.transferencia = req.body?.transferencia !== undefined
     ? JSON.stringify(limpiarTransferencia(req.body.transferencia, t.transferencia ? JSON.parse(t.transferencia) : {}))
     : t.transferencia
@@ -511,11 +558,12 @@ api.patch('/tramites/:id', (req, res) => {
 
   db.transaction(() => {
     db.prepare(`UPDATE tramites SET dominio = @dominio, tipo = @tipo, motivo = @motivo, observaciones = @observaciones,
-                nro_registro = @nro_registro, comprador = @comprador, transferencia = @transferencia,
+                nro_registro = @nro_registro, comprador = @comprador, vendedor = @vendedor, transferencia = @transferencia,
                 actualizado_en = datetime('now') WHERE id = @id`).run({ ...nuevo, id: t.id })
     const detalle = cambiados.map((k) => {
       if (k === 'observaciones') return 'observaciones'
       if (k === 'comprador') return 'los datos del comprador'
+      if (k === 'vendedor') return 'los datos del vendedor'
       if (k === 'transferencia') {
         const tr = JSON.parse(nuevo.transferencia || '{}')
         const sn = (v) => (v === 'SI' ? 'sí' : v === 'NO' ? 'no' : 'sin indicar')
@@ -666,6 +714,42 @@ api.post('/tramites/:id/ddjj', (req, res) => {
     res.set('Content-Disposition', `inline; filename="DDJJ-extravio-${t.dominio}.pdf"`)
     res.send(Buffer.from(pdf))
   }).catch((e) => res.status(500).json({ error: `No se pudo generar el PDF: ${e.message}` }))
+})
+
+// Datos de una transferencia para el bot de la Transferencia Digital del
+// DNRPA, que corre en la PC (ver bot-dnrpa/LEEME.txt). Con ?ver=1 devuelve
+// solo lo que falta, para avisarlo antes de bajar el archivo.
+api.get('/tramites/:id/dnrpa', (req, res) => {
+  const t = cargarTramite(req, res)
+  if (!t) return
+  if (!tipoDe(t.tipo)?.vendedor) return res.status(400).json({ error: 'La Transferencia Digital es para transferencias' })
+  if (!esGestor(req.usuario) && t.solicitante_id !== req.usuario.id) {
+    return res.status(403).json({ error: 'Lo puede bajar quien gestiona o quien pidió el trámite' })
+  }
+  const datos = datosDnrpa(leerTramite(t.id))
+  if (req.query.ver) return res.json({ faltan: datos.faltan })
+  // Lleva datos personales: que no quede en ningun cache.
+  res.set('Cache-Control', 'no-store')
+  res.set('Content-Disposition', `attachment; filename="dnrpa-${t.dominio}.json"`)
+  res.type('application/json').send(JSON.stringify(datos, null, 2))
+})
+
+// El bot, para bajarlo una vez en cada PC. Se arma con los archivos de
+// bot-dnrpa/ del repo; .cmd y .txt con fin de linea de Windows.
+const DIR_BOT = path.join(path.dirname(fileURLToPath(import.meta.url)), '../../bot-dnrpa')
+const ARCHIVOS_BOT = ['Cargar DNRPA.cmd', 'LEEME.txt', 'dnrpa.mjs', 'package.json']
+api.get('/dnrpa/bot.zip', (_req, res) => {
+  try {
+    const archivos = ARCHIVOS_BOT.map((nombre) => {
+      let datos = fs.readFileSync(path.join(DIR_BOT, nombre))
+      if (/\.(cmd|txt)$/.test(nombre)) datos = Buffer.from(datos.toString('utf8').replace(/\r?\n/g, '\r\n'))
+      return { nombre: `bot-dnrpa/${nombre}`, datos }
+    })
+    res.set('Content-Disposition', 'attachment; filename="bot-dnrpa.zip"')
+    res.type('application/zip').send(armarZip(archivos))
+  } catch (e) {
+    res.status(500).json({ error: `No se pudo armar el bot: ${e.message}` })
+  }
 })
 
 // Anexo 08 D de una transferencia. Recibe lo que se ve en el formulario,

@@ -5,3 +5,5 @@ data
 .env
 .git
 *.xlsx
+bot-dnrpa/node_modules
+dnrpa-*.json

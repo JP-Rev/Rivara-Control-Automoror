@@ -14,3 +14,6 @@ data/
 # Planillas reales: tienen nombres de personas. No van al repo.
 *.xlsx
 *.xls
+
+# Datos que la app baja para el bot del DNRPA: tienen datos personales.
+dnrpa-*.json

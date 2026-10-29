@@ -32,6 +32,8 @@ services:
       DDJJ_LUGAR: ${DDJJ_LUGAR:-Buenos Aires}
       DDJJ_SECCIONAL: ${DDJJ_SECCIONAL:-}
       DDJJ_REGISTRO: ${DDJJ_REGISTRO:-}
+      DNRPA_EMAIL: ${DNRPA_EMAIL:-}
+      DNRPA_TELEFONO: ${DNRPA_TELEFONO:-}
     # Disco de datos del contrato (§7): el DIRECTORIO, nunca el .db suelto.
     volumes:
       - /storage/automotor:/data

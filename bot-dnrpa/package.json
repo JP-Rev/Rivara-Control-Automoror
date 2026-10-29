@@ -1,0 +1,10 @@
+{
+  "name": "rivara-bot-dnrpa",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Completa los campos de la Transferencia Digital del DNRPA con los datos de la app de Tramites del Registro Automotor",
+  "type": "module",
+  "dependencies": {
+    "playwright-core": "1.56.1"
+  }
+}

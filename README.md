@@ -138,6 +138,31 @@ como figuran en el título, uso, año, titular, Nº de título y Nº de cédula.
 El Nº de título y el Nº de cédula son los que pide la DDJJ de extravío: si el
 vehículo los tiene, la DDJJ los precarga.
 
+## Transferencia Digital del DNRPA (bot)
+
+En una transferencia, después de cargar **vendedor** y **comprador** (a mano o
+leyendo el DNI), «**Cargar en el DNRPA**» baja los datos para un bot que
+completa el sitio de la Transferencia Digital
+(<https://www2.jus.gov.ar/dnrpa-site/>).
+
+- **Corre en la PC, no en el servidor:** abre el Edge de Windows, porque los
+  botones y el captcha los aprieta una persona. Es Node + `playwright-core`
+  (`bot-dnrpa/`); la app lo entrega como `.zip` (`GET /api/dnrpa/bot.zip`) con
+  un `Cargar DNRPA.cmd` que se abre con doble clic. Ver `bot-dnrpa/LEEME.txt`.
+- **Solo completa campos.** Nunca aprieta CONFIRMAR, SIGUIENTE, GUARDAR, los
+  SÍ/NO de los carteles ni el captcha. Mira la página y, cada vez que cambia
+  de pantalla, completa la nueva: dominio y últimos 7 del chasis; vendedor
+  (documento, CUIT, nombre, estado civil al adquirir); comprador (documento,
+  sexo, estado civil, nacionalidad, nacimiento, CUIL, ocupación, cónyuge,
+  domicilio legal y real); contacto siempre `DNRPA_EMAIL` / `DNRPA_TELEFONO`.
+- Busca cada campo **por la etiqueta que se ve y la sección** en la que está
+  («Datos de Cónyuge», «Domicilio Legal»), no por ids internos del sitio.
+  Completa cada campo una vez por pantalla: lo que se corrige a mano no lo
+  vuelve a pisar.
+- Antes de bajar los datos la app avisa lo que falta (p. ej. el código
+  postal, que el DNI no trae). El `dnrpa-<DOMINIO>.json` tiene datos
+  personales: se borra de Descargas cuando el trámite está presentado.
+
 ## Usuarios y permisos
 
 Igual que el resto de las apps de la intranet:
@@ -170,6 +195,7 @@ Todas en el `.env` al lado del compose. Ver `.env.example`.
 | `PLANILLA_CAMIONETAS`, `PLANILLA_CAMIONES` | no | Rutas UNC; por defecto las de arriba. También aceptan una ruta local si el recurso se monta en el host |
 | `SYNC_MINUTOS` | no | Mínimo entre lecturas automáticas (10) |
 | `DDJJ_LUGAR`, `DDJJ_SECCIONAL` | no | Lo que sale en la DDJJ (editable en cada una) |
+| `DNRPA_EMAIL`, `DNRPA_TELEFONO` | no | Contacto que el bot carga en la Transferencia Digital (por defecto jreale@rivara.com.ar · 2346472000) |
 | `AUTOMOTOR_ADMIN_EMAIL`, `AUTOMOTOR_ADMIN_PASSWORD` | no | Usuario de emergencia |
 
 > **Seguridad:** la contraseña de Windows queda escrita en el `.env` del

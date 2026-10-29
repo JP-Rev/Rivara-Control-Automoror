@@ -158,6 +158,13 @@ const TRAZOS = {
       <path d="M7 14h10v6H7z" />
     </>
   ),
+  descarga: (
+    <>
+      <path d="M12 4v11" />
+      <path d="M7 10l5 5 5-5" />
+      <path d="M5 20h14" />
+    </>
+  ),
   refrescar: (
     <>
       <path d="M20 11a8 8 0 1 0-2.3 5.7" />

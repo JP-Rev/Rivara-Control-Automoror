@@ -1,0 +1,33 @@
+BOT DE LA TRANSFERENCIA DIGITAL DEL DNRPA
+=========================================
+
+Completa los campos del sitio https://www2.jus.gov.ar/dnrpa-site/ con los
+datos del tramite cargados en la app (vendedor, comprador, vehiculo). NO
+aprieta ningun boton: CONFIRMAR, SIGUIENTE, GUARDAR, los SI/NO de los
+carteles y el captcha los hace una persona.
+
+Una sola vez
+------------
+1. Instalar Node.js (version LTS) desde https://nodejs.org
+2. Descomprimir esta carpeta en un lugar fijo, por ejemplo
+   C:\Rivara\bot-dnrpa
+3. La primera vez que se abre "Cargar DNRPA.cmd" instala lo que necesita
+   (un minuto). Usa el Edge que ya tiene Windows.
+
+En cada transferencia
+---------------------
+1. En la app, en el tramite: "Cargar en el DNRPA" > "Bajar los datos".
+   Queda un dnrpa-<DOMINIO>.json en Descargas.
+2. Doble clic en "Cargar DNRPA.cmd" (toma el dnrpa-*.json mas nuevo de
+   Descargas; tambien se puede arrastrar el .json encima).
+3. Se abre Edge en el sitio del DNRPA. Entrar a Transferencia Digital y
+   seguir con los botones: en cada pantalla el bot completa los campos y
+   muestra un cartel verde arriba a la derecha con lo que hizo.
+4. Revisar todo antes de cada GUARDAR / CONFIRMAR. Para terminar, cerrar el
+   navegador.
+
+Los dnrpa-*.json tienen datos personales del comprador: borrarlos de
+Descargas cuando el tramite este presentado.
+
+Con Chrome en lugar de Edge: abrir una consola en esta carpeta y correr
+   node dnrpa.mjs --navegador=chrome

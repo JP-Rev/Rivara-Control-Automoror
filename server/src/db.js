@@ -122,6 +122,8 @@ export function migrate() {
       -- 142/2024 (sellos, patentes, infracciones: SI/NO) y lo ultimo que se
       -- imprimio en el Anexo 08 D (JSON).
       transferencia  TEXT,
+      -- Transferencias: quien vende (JSON), para la Transferencia Digital.
+      vendedor       TEXT,
       creado_en      TEXT NOT NULL DEFAULT (datetime('now')),
       actualizado_en TEXT NOT NULL DEFAULT (datetime('now'))
     );
@@ -174,4 +176,5 @@ export function migrate() {
   const deTramites = new Set(db.prepare('PRAGMA table_info(tramites)').all().map((c) => c.name))
   if (!deTramites.has('comprador')) db.exec('ALTER TABLE tramites ADD COLUMN comprador TEXT')
   if (!deTramites.has('transferencia')) db.exec('ALTER TABLE tramites ADD COLUMN transferencia TEXT')
+  if (!deTramites.has('vendedor')) db.exec('ALTER TABLE tramites ADD COLUMN vendedor TEXT')
 }
