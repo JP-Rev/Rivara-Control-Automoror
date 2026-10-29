@@ -22,7 +22,9 @@ export const resumenVehiculo = (v) =>
 // Solo acepta dominios de la flota: un dominio mal tipeado generaba un
 // tramite sin vehiculo que despues nadie encontraba. Si es un vehiculo nuevo,
 // `onAgregar` (solo para quien gestiona) ofrece darlo de alta en la flota.
-export default function DominioInput({ valor, onCambio, vehiculos, autoFocus, onAgregar }) {
+// sinAvisoFuera: quien lo usa ya explica que pasa con un dominio que no esta
+// en la flota (la lectura de documentos lo agrega).
+export default function DominioInput({ valor, onCambio, vehiculos, autoFocus, onAgregar, sinAvisoFuera }) {
   const [texto, setTexto] = useState(valor || '')
   const [abierto, setAbierto] = useState(false)
   const [activo, setActivo] = useState(0)
@@ -100,7 +102,7 @@ export default function DominioInput({ valor, onCambio, vehiculos, autoFocus, on
           ))}
         </ul>
       )}
-      {texto.trim() && (
+      {texto.trim() && !(sinAvisoFuera && !exacto) && (
         exacto
           ? <p className="dominio-info ok">{resumenVehiculo(exacto) || 'En la flota'}</p>
           : sugerencias.length > 0 && !dominioValido(dominio)

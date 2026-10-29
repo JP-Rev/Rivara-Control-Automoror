@@ -7,6 +7,7 @@ import Bandeja from './pages/Bandeja.jsx'
 import Ddjj from './pages/Ddjj.jsx'
 import DetalleTramite from './pages/DetalleTramite.jsx'
 import Flota from './pages/Flota.jsx'
+import LeerDocumento from './pages/LeerDocumento.jsx'
 import Login from './pages/Login.jsx'
 import NuevoTramite from './pages/NuevoTramite.jsx'
 import Password from './pages/Password.jsx'
@@ -63,6 +64,7 @@ function App() {
   const [detalle, setDetalle] = useState(null)    // id
   const [ddjj, setDdjj] = useState(null)          // tramite
   const [vehiculo, setVehiculo] = useState(null)  // objeto, o { nuevo: true, dominio? }
+  const [leerDoc, setLeerDoc] = useState(null)    // { vehiculo? }
   // Sube cuando algo de afuera cambia el tramite abierto (la DDJJ, los datos
   // del vehiculo): el detalle se vuelve a montar y relee todo.
   const [versionDetalle, setVersionDetalle] = useState(0)
@@ -331,7 +333,8 @@ function App() {
               )}
               {vista === 'flota' && (
                 <Flota vehiculos={vehiculos} sincronizacion={sincronizacion} catalogo={catalogo} usuario={usuario}
-                       onAbrir={setVehiculo} onNuevo={() => setVehiculo({ nuevo: true })} onLeer={leerAhora} leyendo={leyendo} />
+                       onAbrir={setVehiculo} onNuevo={() => setVehiculo({ nuevo: true })}
+                       onLeerDocumento={() => setLeerDoc({})} onLeer={leerAhora} leyendo={leyendo} />
               )}
               {vista === 'usuarios' && usuario.esAdmin && <Usuarios usuario={usuario} />}
               {vista === 'password' && <Password onCerrar={() => setVista('bandeja')} />}
@@ -370,11 +373,17 @@ function App() {
                   onGuardado={() => { cargarVehiculos(); cargarTramites(); cargarCatalogo(); vehiculoCambio.current = true }}
                   onNuevoTramite={(dominio) => { setVehiculo(null); setNuevo({ dominio }) }}
                   onAbrirTramite={(id) => { setVehiculo(null); setDetalle(id) }}
+                  onLeerDocumento={(v) => { setVehiculo(null); setLeerDoc({ vehiculo: v }) }}
                   onCerrar={() => {
                     setVehiculo(null)
                     if (vehiculoCambio.current) setVersionDetalle((n) => n + 1)
                     vehiculoCambio.current = false
                   }} />
+      )}
+      {leerDoc && catalogo && (
+        <LeerDocumento vehiculos={vehiculos} vehiculoInicial={leerDoc.vehiculo} usuario={usuario}
+                       onAplicado={() => { cargarVehiculos(); cargarCatalogo(); cargarTramites() }}
+                       onCerrar={() => setLeerDoc(null)} />
       )}
       {ddjj && catalogo && (
         <Ddjj tramite={ddjj} catalogo={catalogo} usuario={usuario}

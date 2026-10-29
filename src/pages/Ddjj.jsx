@@ -30,6 +30,10 @@ function valoresIniciales(tramite, catalogo) {
   // Las placas llevan el numero de dominio; el titulo y la cedula, el numero
   // de control impreso en el documento, que solo se sabe si se tiene a mano.
   if (def?.ddjj === 'placas') documentos.placas = tramite.dominio
+  // Los numeros de control, si la flota los tiene (se cargan a mano o
+  // leyendo la cedula o el titulo).
+  if (def?.ddjj === 'titulo' && v?.nroTitulo) documentos.titulo = v.nroTitulo
+  if (def?.ddjj === 'cedula' && v?.nroCedula) documentos.cedula = v.nroCedula
 
   return {
     lugar: previo?.lugar || catalogo.ddjj.lugar,
@@ -67,7 +71,10 @@ export default function Ddjj({ tramite, catalogo, usuario, onListo, onCerrar }) 
     ...x,
     marcados: { ...x.marcados, [k]: si },
     // Las placas se completan solas con el dominio al marcarlas.
-    documentos: { ...x.documentos, [k]: si ? (x.documentos[k] || (k === 'placas' ? tramite.dominio : '')) : '' },
+    documentos: {
+      ...x.documentos,
+      [k]: si ? (x.documentos[k] || { placas: tramite.dominio, titulo: tramite.vehiculo?.nroTitulo, cedula: tramite.vehiculo?.nroCedula }[k] || '') : '',
+    },
   }))
 
   async function generar(e) {

@@ -26,6 +26,7 @@ app.use('/api', api)
 // como HTML y el fetch falla al parsearlo.
 app.use('/api', (_req, res) => res.status(404).json({ error: 'No encontrado' }))
 app.use('/api', (err, _req, res, _next) => {
+  if (err.type === 'entity.too.large') return res.status(413).json({ error: 'El archivo es demasiado grande (máximo 15 MB)' })
   console.error(err)
   res.status(500).json({ error: 'Error inesperado del servidor' })
 })

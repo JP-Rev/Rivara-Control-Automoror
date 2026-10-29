@@ -3,6 +3,7 @@ import * as api from '../api.js'
 import { EstadoChip } from '../componentes/Estado.jsx'
 import Modal from '../componentes/Modal.jsx'
 import Selector from '../componentes/Selector.jsx'
+import { Icono } from '../iconos.jsx'
 import { fechaHora } from '../formato.js'
 
 // Los datos que vienen de la planilla y los que se cargan a mano, separados:
@@ -22,11 +23,12 @@ const REGISTRALES = [
   ['marcaMotor', 'Marca de motor', 'marcasMotor'], ['nroMotor', 'Nº de motor'],
   ['uso', 'Uso', 'usos'], ['tipoRegistral', 'Tipo (como figura en el título)', 'tiposRegistrales'],
   ['modeloRegistral', 'Modelo (como figura en el título)'],
+  ['nroTitulo', 'Nº de título'], ['nroCedula', 'Nº de cédula'],
 ]
 // Nombre de columna (lo que devuelve "manuales") -> campo de la API.
 const COLUMNA_A_CAMPO = { configuracion: 'configuracion', anio: 'anio' }
 
-export default function Vehiculo({ vehiculo, catalogo, usuario, tramites, onGuardado, onNuevoTramite, onAbrirTramite, onCerrar }) {
+export default function Vehiculo({ vehiculo, catalogo, usuario, tramites, onGuardado, onNuevoTramite, onAbrirTramite, onLeerDocumento, onCerrar }) {
   // vehiculo: el objeto de la flota, o { nuevo: true, dominio } para un alta
   // (con el dominio ya escrito si viene desde el alta de un tramite).
   const nuevo = !vehiculo || vehiculo.nuevo
@@ -95,6 +97,11 @@ export default function Vehiculo({ vehiculo, catalogo, usuario, tramites, onGuar
 
         <fieldset className="opciones">
           <legend>Datos registrales <span className="apagado">(no están en la planilla: se cargan acá)</span></legend>
+          {editable && !nuevo && onLeerDocumento && (
+            <button type="button" className="boton boton-suave boton-chico boton-leer" onClick={() => onLeerDocumento(vehiculo)}>
+              <Icono clave="documento" tamano={16} /> Completar desde la cédula o el título
+            </button>
+          )}
           {!nuevo && vehiculo.faltan.length > 0 && (
             <p className="falta">Faltan: {vehiculo.faltan.map((c) => catalogo.camposRegistrales.find((x) => x.clave === c)?.nombre).join(', ')}</p>
           )}

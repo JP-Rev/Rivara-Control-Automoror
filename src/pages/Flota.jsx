@@ -90,7 +90,7 @@ export function EstadoPlanillas({ sincronizacion, onLeer, leyendo }) {
   )
 }
 
-export default function Flota({ vehiculos, sincronizacion, catalogo, usuario, onAbrir, onNuevo, onLeer, leyendo }) {
+export default function Flota({ vehiculos, sincronizacion, catalogo, usuario, onAbrir, onNuevo, onLeer, onLeerDocumento, leyendo }) {
   const [filtro, setFiltro] = useRecordado('automotor.flota', INICIAL)
   const [orden, setOrden] = useState({ campo: 'unidad', desc: false })
 
@@ -165,9 +165,14 @@ export default function Flota({ vehiculos, sincronizacion, catalogo, usuario, on
             <div className="fila-acciones">
               <Resumen mostrados={lista.length} total={vehiculos.length} nombre="vehículos" hayFiltros={hayFiltros} onLimpiar={() => setFiltro(INICIAL)} />
               {usuario.esGestor && (
-                <button type="button" className="boton boton-suave boton-chico" onClick={onNuevo}>
-                  <Icono clave="mas" tamano={16} /> Agregar a mano
-                </button>
+                <div className="fila-acciones">
+                  <button type="button" className="boton boton-chico" onClick={onLeerDocumento}>
+                    <Icono clave="documento" tamano={16} /> Leer cédula o título
+                  </button>
+                  <button type="button" className="boton boton-suave boton-chico" onClick={onNuevo}>
+                    <Icono clave="mas" tamano={16} /> Agregar a mano
+                  </button>
+                </div>
               )}
             </div>
           </div>

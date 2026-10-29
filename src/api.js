@@ -48,3 +48,17 @@ export async function ddjj(id, datos) {
 export const usuarios = () => pedir('/usuarios')
 export const crearUsuario = (datos) => pedir('/usuarios', json('POST', datos))
 export const editarUsuario = (id, datos) => pedir(`/usuarios/${id}`, json('PATCH', datos))
+
+// Cedula o titulo (PDF o foto): el archivo va crudo en el cuerpo. Devuelve lo
+// leido; no guarda nada.
+export async function leerDocumento(archivo) {
+  const res = await fetch('/api/documentos/leer', {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': archivo.type || 'application/octet-stream' },
+    body: archivo,
+  })
+  const cuerpo = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(cuerpo.error || 'No se pudo leer el documento')
+  return cuerpo
+}

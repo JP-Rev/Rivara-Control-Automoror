@@ -999,3 +999,34 @@ label.corregido > span small { color: #7a4a06; font-weight: 600; }
 
 /* La X propia del buscador ya borra: la del navegador quedaba duplicada. */
 input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; appearance: none; }
+
+/* ---- Leer cédula o título ---- */
+
+.zona-archivo {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  padding: 30px 20px;
+  text-align: center;
+  border: 2px dashed var(--rv-tint-borde);
+  border-radius: var(--rv-r-lg);
+  background: var(--rv-bg);
+}
+.zona-archivo--encima { border-color: var(--rv-verde); background: var(--rv-tint); }
+.zona-archivo strong { font-size: 16px; }
+.fila-acciones--centro { justify-content: center; margin-top: 6px; }
+.boton-leer { align-self: flex-start; }
+
+.tabla-lectura { min-width: 620px; }
+.tabla-lectura td:first-child, .tabla-lectura th:first-child { width: 52px; text-align: center; }
+.tabla-lectura input[type="checkbox"] { width: 18px; height: 18px; }
+.tabla-lectura input[type="text"] { padding: 8px 12px; font-size: 14px; font-weight: 600; }
+.tabla-lectura td:nth-child(2) { font-size: 13px; font-weight: 700; color: var(--rv-texto-3); white-space: nowrap; }
+.tabla-lectura td:last-child { font-size: 13.5px; }
+.lectura--nuevo td:nth-child(3) input { border-color: var(--rv-verde); background: var(--rv-tint); }
+.lectura--distinto td:nth-child(3) input { border-color: #e8c27a; background: #FFFBF2; }
+.lectura--vacio { opacity: 0.6; }
+.th-info { display: inline-flex; align-items: center; gap: 2px; }
+.th-info .info-boton { width: 24px; height: 24px; }
+.th-info .info-globo { text-transform: none; letter-spacing: 0; font-size: 13px; font-weight: 400; }

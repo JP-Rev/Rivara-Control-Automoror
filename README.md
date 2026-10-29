@@ -114,6 +114,30 @@ el detalle del trámite ofrece imprimir la DDJJ de la Disposición D.N. 235/03
   pedirlos.
 - Lo impreso queda guardado en el trámite, para reimprimirlo igual.
 
+## Leer la cédula o el título
+
+Desde **Flota → «Leer cédula o título»**, o desde la ficha de un vehículo
+(«Completar desde la cédula o el título»), se sube el documento y se completan
+los datos registrales: marca y Nº de chasis, marca y Nº de motor, modelo y tipo
+como figuran en el título, uso, año, titular, Nº de título y Nº de cédula.
+
+- **Título digital en PDF** (el que entrega el Registro): se lee el texto del
+  PDF con `pdftotext`. Es exacto.
+- **Foto** de la cédula o del título (también desde la cámara del celular):
+  se mejora la imagen con ImageMagick y se lee con **Tesseract en castellano**.
+  Corrige los errores típicos (`O`/`0` en el dominio, `I`/`O` en un VIN) y lleva
+  el uso a la lista («Priv.-Tran. carga interjur.» → «PRIV. TRANSP. DE CARGA
+  INTERJ.»).
+- **Todo local**: el documento no sale a internet ni se guarda en el servidor
+  (tiene datos personales del titular).
+- **Nada se guarda sin revisar.** Cada dato leído aparece al lado del que ya
+  tenía el vehículo. Se tildan solos los que completan algo vacío; los que
+  pisarían un valor distinto aparecen marcados y destildados.
+- Si el dominio del documento no está en la flota, al guardar se agrega.
+
+El Nº de título y el Nº de cédula son los que pide la DDJJ de extravío: si el
+vehículo los tiene, la DDJJ los precarga.
+
 ## Usuarios y permisos
 
 Igual que el resto de las apps de la intranet:
@@ -240,8 +264,9 @@ docker exec automotor sqlite3 /data/automotor.db ".backup '/data/backup-$(date +
 
 React 19 + Vite en el front, Express 4 + better-sqlite3 en el servidor, como
 Finanzas Axion. Además: `xlsx` para leer las planillas, `pdf-lib` para la
-DDJJ (Helvetica estándar, sin fuentes embebidas) y `smbclient` en la imagen
-para la red Windows. Sin router: la vista vive en `App.jsx`.
+DDJJ (Helvetica estándar, sin fuentes embebidas), y en la imagen `smbclient`
+para la red Windows y `poppler-utils`, `tesseract-ocr-spa` e `imagemagick`
+para leer cédulas y títulos. Sin router: la vista vive en `App.jsx`.
 
 `src/rivara-ui.css` es una copia de la base del portal y **no se edita acá**.
 

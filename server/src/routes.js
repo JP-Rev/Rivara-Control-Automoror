@@ -1,4 +1,4 @@
-import { Router } from 'express'
+import express, { Router } from 'express'
 import crypto from 'node:crypto'
 import { db } from './db.js'
 import {
@@ -11,6 +11,7 @@ import {
 } from './catalogo.js'
 import { dominioValido, normalizarDominio } from './dominio.js'
 import { DOCUMENTOS_DDJJ, generarDDJJ } from './ddjj.js'
+import { extraerTexto, interpretar } from './documentos.js'
 import { CAMPOS_PLANILLA, estadoSincronizacion, sincronizar } from './sincronizar.js'
 
 export const api = Router()
@@ -145,6 +146,8 @@ const vehiculoPublico = (v) => ({
   marcaMotor: v.marca_motor,
   nroMotor: v.nro_motor,
   uso: v.uso,
+  nroTitulo: v.nro_titulo,
+  nroCedula: v.nro_cedula,
   observaciones: v.observaciones,
   fuente: v.fuente,
   origen: v.origen,
@@ -175,7 +178,7 @@ const CAMPOS_VEHICULO = {
   titular: 'titular', localidad: 'localidad', sector: 'sector',
   tipoRegistral: 'tipo_registral', modeloRegistral: 'modelo_registral',
   marcaChasis: 'marca_chasis', nroChasis: 'nro_chasis', marcaMotor: 'marca_motor',
-  nroMotor: 'nro_motor', uso: 'uso', observaciones: 'observaciones',
+  nroMotor: 'nro_motor', uso: 'uso', nroTitulo: 'nro_titulo', nroCedula: 'nro_cedula', observaciones: 'observaciones',
 }
 
 function limpiarCampoVehiculo(columna, valor) {
@@ -192,7 +195,7 @@ function limpiarCampoVehiculo(columna, valor) {
   if (columna === 'observaciones') return textoLargo(valor, 2000)
   // Chasis y motor se guardan en mayusculas y sin espacios dobles: asi se
   // escriben en el titulo y asi hay que copiarlos en un formulario.
-  if (['nro_chasis', 'nro_motor'].includes(columna)) return texto(valor, 60).toUpperCase()
+  if (['nro_chasis', 'nro_motor', 'nro_titulo', 'nro_cedula'].includes(columna)) return texto(valor, 60).toUpperCase()
   return texto(valor, 200)
 }
 
@@ -243,6 +246,38 @@ api.patch('/vehiculos/:id', requireGestor, (req, res) => {
   db.prepare(`UPDATE vehiculos SET ${[...sets, 'manuales = @manuales', "actualizado_en = datetime('now')"].join(', ')} WHERE id = @id`)
     .run({ ...cambios, manuales: JSON.stringify([...manuales]), id: previo.id })
   res.json({ vehiculo: vehiculoPublico(db.prepare('SELECT * FROM vehiculos WHERE id = ?').get(previo.id)) })
+})
+
+// Lee una cedula o un titulo (PDF o foto) y devuelve lo que entendio, junto
+// con el vehiculo de la flota que corresponde al dominio. NO guarda nada: la
+// pantalla muestra lo leido al lado de lo que ya hay y la persona elige que
+// usar (despues va por PATCH /vehiculos/:id como cualquier edicion). El
+// archivo tampoco se guarda: tiene datos personales del titular.
+const formatoArchivo = (b) => {
+  if (b.length < 12) return null
+  if (b.subarray(0, 5).toString('latin1') === '%PDF-') return 'pdf'
+  if (b[0] === 0xff && b[1] === 0xd8) return 'jpg'
+  if (b.subarray(0, 4).toString('hex') === '89504e47') return 'png'
+  if (b.subarray(0, 4).toString('latin1') === 'RIFF' && b.subarray(8, 12).toString('latin1') === 'WEBP') return 'webp'
+  if (b.subarray(4, 8).toString('latin1') === 'ftyp') return 'heic'
+  if (['II*\u0000', 'MM\u0000*'].includes(b.subarray(0, 4).toString('latin1'))) return 'tif'
+  return null
+}
+
+api.post('/documentos/leer', requireGestor, express.raw({ type: () => true, limit: '15mb' }), async (req, res) => {
+  const buffer = req.body
+  if (!Buffer.isBuffer(buffer) || !buffer.length) return res.status(400).json({ error: 'No llegó ningún archivo' })
+  const formato = formatoArchivo(buffer)
+  if (!formato) return res.status(400).json({ error: 'El archivo tiene que ser un PDF o una foto (JPG, PNG, WEBP)' })
+
+  try {
+    const { texto, metodo } = await extraerTexto(buffer)
+    const lectura = interpretar(texto)
+    const v = lectura.dominio ? db.prepare('SELECT * FROM vehiculos WHERE dominio = ?').get(lectura.dominio) : null
+    res.json({ ...lectura, metodo, formato, vehiculo: v ? vehiculoPublico(v) : null })
+  } catch (e) {
+    res.status(500).json({ error: `No se pudo leer el documento: ${e.message}` })
+  }
 })
 
 // Sin "forzar" respeta el minimo entre lecturas: es lo que llama la app al

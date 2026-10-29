@@ -72,6 +72,10 @@ export function migrate() {
       marca_motor    TEXT NOT NULL DEFAULT '',
       nro_motor      TEXT NOT NULL DEFAULT '',
       uso            TEXT NOT NULL DEFAULT '',
+      -- Numeros de control del titulo y de la cedula: son los que pide la
+      -- DDJJ de extravio. Se cargan a mano o leyendo el documento.
+      nro_titulo     TEXT NOT NULL DEFAULT '',
+      nro_cedula     TEXT NOT NULL DEFAULT '',
       observaciones  TEXT NOT NULL DEFAULT '',
 
       -- De que planilla viene ('camionetas', 'camiones') o '' si se cargo a
@@ -152,4 +156,12 @@ export function migrate() {
       avisos      TEXT NOT NULL DEFAULT '[]'
     );
   `)
+
+  // Columnas que se agregaron despues de la primera version: CREATE TABLE IF
+  // NOT EXISTS no las suma a una base que ya existe. ALTER ... ADD COLUMN no
+  // toca los datos que ya estan.
+  const columnas = new Set(db.prepare('PRAGMA table_info(vehiculos)').all().map((c) => c.name))
+  for (const [col, def] of [['nro_titulo', "TEXT NOT NULL DEFAULT ''"], ['nro_cedula', "TEXT NOT NULL DEFAULT ''"]]) {
+    if (!columnas.has(col)) db.exec(`ALTER TABLE vehiculos ADD COLUMN ${col} ${def}`)
+  }
 }
