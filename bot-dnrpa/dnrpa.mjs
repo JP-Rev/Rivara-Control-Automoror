@@ -2,7 +2,7 @@
 //
 // Abre Edge en la PC (no en el servidor: el captcha y los botones los aprieta
 // una persona), y en cada pantalla del tramite COMPLETA LOS CAMPOS con los
-// datos que bajo la app (dnrpa-<DOMINIO>.json). No aprieta ningun boton: ni
+// datos que toma de la app (los ya cargados en el tramite). No aprieta ningun boton: ni
 // CONFIRMAR, ni SIGUIENTE, ni GUARDAR, ni los SI/NO de los carteles. Se queda
 // mirando: cuando la pagina cambia de pantalla, completa la nueva.
 //
@@ -14,8 +14,13 @@
 // Un campo se completa UNA vez por pantalla: si despues lo corregis a mano, el
 // bot no lo vuelve a pisar.
 //
-// Uso:  node dnrpa.mjs [dnrpa-AE229CF.json]
-//   Sin archivo, toma el dnrpa-*.json mas nuevo de la carpeta Descargas.
+// Se abre desde la app: el boton «Abrir el bot» del tramite abre un enlace
+// rivara-dnrpa:<...> que Windows le pasa a "Cargar DNRPA.cmd" (lo registra
+// ese mismo .cmd la primera vez que se abre). El enlace trae la direccion
+// de la app con una clave de un solo uso, y de ahi salen los datos.
+//
+// Uso:  node dnrpa.mjs rivara-dnrpa:<enlace>
+//       node dnrpa.mjs datos.json            (pruebas)
 //   --navegador=chrome   usa Chrome en lugar de Edge
 //   --ejecutable=RUTA    un Chromium cualquiera (pruebas)
 //   --url=URL            otra direccion de inicio (pruebas)
@@ -31,17 +36,30 @@ const opciones = Object.fromEntries(process.argv.slice(2).filter((a) => a.starts
   .map((a) => { const [k, ...v] = a.slice(2).split('='); return [k, v.join('=') || true] }))
 const sueltos = process.argv.slice(2).filter((a) => !a.startsWith('--'))
 
-function archivoDeDatos() {
-  if (sueltos[0]) return path.resolve(sueltos[0])
-  const descargas = path.join(os.homedir(), 'Downloads')
-  const candidatos = fs.existsSync(descargas)
-    ? fs.readdirSync(descargas).filter((n) => /^dnrpa-.*\.json$/i.test(n))
-      .map((n) => path.join(descargas, n)).sort((a, b) => fs.statSync(b).mtimeMs - fs.statSync(a).mtimeMs)
-    : []
-  if (!candidatos.length) {
-    throw new Error(`No hay ningun dnrpa-*.json en ${descargas}. Bajalo desde el tramite en la app («Cargar en el DNRPA») o arrastralo sobre este programa.`)
+// rivara-dnrpa:<direccion en base64url>. El navegador a veces agrega "//" o
+// una "/" al final: se descarta todo lo que no es base64url.
+export function urlDelEnlace(enlace) {
+  const codigo = String(enlace).replace(/^rivara-dnrpa:/i, '').replace(/[^A-Za-z0-9_-]/g, '')
+  const url = Buffer.from(codigo, 'base64url').toString('utf8')
+  if (!/^https?:\/\/[^/]+\/api\/dnrpa\/datos\/[A-Za-z0-9_-]+$/.test(url)) throw new Error('El enlace no es de la app de Trámites del Registro Automotor.')
+  return url
+}
+
+async function leerDatos() {
+  const arg = sueltos[0]
+  if (!arg) {
+    throw new Error('Este programa se abre desde la app: en el trámite, «Cargar en el DNRPA» → «Abrir el bot». ' +
+      'Ya quedó registrado en esta PC.')
   }
-  return candidatos[0]
+  if (/^rivara-dnrpa:/i.test(arg)) {
+    const url = urlDelEnlace(arg)
+    console.log(`Pidiendo los datos a ${new URL(url).host}...`)
+    const res = await fetch(url)
+    const cuerpo = await res.json().catch(() => ({}))
+    if (!res.ok) throw new Error(cuerpo.error || `La app respondió ${res.status}`)
+    return cuerpo
+  }
+  return JSON.parse(fs.readFileSync(path.resolve(arg), 'utf8'))
 }
 
 /* ----------------------- que va en cada campo ----------------------- */
@@ -286,11 +304,10 @@ export async function completarPantalla(page, datos) {
 /* -------------------------------- main -------------------------------- */
 
 async function main() {
-  const archivo = archivoDeDatos()
-  const datos = JSON.parse(fs.readFileSync(archivo, 'utf8'))
-  if (datos.rivara !== 'dnrpa-transferencia') throw new Error(`${archivo} no es un archivo de datos del bot DNRPA.`)
+  const datos = await leerDatos()
+  if (datos.rivara !== 'dnrpa-transferencia') throw new Error('Lo recibido no son datos del bot DNRPA.')
 
-  console.log(`Datos: ${path.basename(archivo)} · dominio ${datos.dominio}`)
+  console.log(`Trámite #${datos.tramite} · dominio ${datos.dominio}`)
   if (datos.faltan?.length) console.log(`Faltan en la app (completalos a mano en el sitio): ${datos.faltan.join(', ')}`)
 
   let pw
@@ -299,8 +316,10 @@ async function main() {
   } catch {
     pw = await import('playwright')
   }
-  const perfil = path.join(process.env.LOCALAPPDATA || os.homedir(), 'RivaraBotDnrpa', 'perfil')
-  fs.mkdirSync(perfil, { recursive: true })
+  // Un perfil nuevo por vez: se puede abrir el bot para dos tramites a la
+  // vez, y no queda nada guardado al cerrar.
+  const perfil = fs.mkdtempSync(path.join(os.tmpdir(), 'rivara-dnrpa-'))
+  process.on('exit', () => { try { fs.rmSync(perfil, { recursive: true, force: true }) } catch {} })
   const lanzar = {
     headless: Boolean(opciones.oculto),
     viewport: null,

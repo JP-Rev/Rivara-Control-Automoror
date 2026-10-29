@@ -82,6 +82,26 @@ api.post('/auth/password', requireAuth, (req, res) => {
   res.json({ ok: true })
 })
 
+/* --------------- bot del DNRPA: datos por enlace de un uso --------------- */
+
+// El bot corre en la PC y no tiene la sesion del navegador: la app le pasa un
+// enlace con una clave al azar que sirve UNA vez y vence a los 10 minutos.
+// Las claves viven en memoria (un reinicio las anula, y se pide otra).
+const ENLACE_MINUTOS = 10
+const enlacesBot = new Map() // clave -> { id, vence }
+const limpiarEnlaces = () => { for (const [k, e] of enlacesBot) if (e.vence < Date.now()) enlacesBot.delete(k) }
+
+api.get('/dnrpa/datos/:clave', (req, res) => {
+  limpiarEnlaces()
+  const e = enlacesBot.get(req.params.clave)
+  if (!e) return res.status(404).json({ error: 'El enlace venció o ya se usó: volvé a tocar «Abrir el bot» en el trámite.' })
+  enlacesBot.delete(req.params.clave)
+  const t = leerTramite(e.id)
+  if (!t) return res.status(404).json({ error: 'El trámite ya no existe' })
+  res.set('Cache-Control', 'no-store')
+  res.json(datosDnrpa(t))
+})
+
 /* ------------------- de aca para abajo, con sesion ------------------- */
 
 api.use(requireAuth)
@@ -719,9 +739,8 @@ api.post('/tramites/:id/ddjj', (req, res) => {
   }).catch((e) => res.status(500).json({ error: `No se pudo generar el PDF: ${e.message}` }))
 })
 
-// Datos de una transferencia para el bot de la Transferencia Digital del
-// DNRPA, que corre en la PC (ver bot-dnrpa/LEEME.txt). Con ?ver=1 devuelve
-// solo lo que falta, para avisarlo antes de bajar el archivo.
+// Lo que falta cargar para la Transferencia Digital del DNRPA, para avisarlo
+// antes de abrir el bot (ver bot-dnrpa/LEEME.txt).
 api.get('/tramites/:id/dnrpa', (req, res) => {
   const t = cargarTramite(req, res)
   if (!t) return
@@ -729,12 +748,21 @@ api.get('/tramites/:id/dnrpa', (req, res) => {
   if (!esGestor(req.usuario) && t.solicitante_id !== req.usuario.id) {
     return res.status(403).json({ error: 'Lo puede bajar quien gestiona o quien pidió el trámite' })
   }
-  const datos = datosDnrpa(leerTramite(t.id))
-  if (req.query.ver) return res.json({ faltan: datos.faltan })
-  // Lleva datos personales: que no quede en ningun cache.
-  res.set('Cache-Control', 'no-store')
-  res.set('Content-Disposition', `attachment; filename="dnrpa-${t.dominio}.json"`)
-  res.type('application/json').send(JSON.stringify(datos, null, 2))
+  res.json({ faltan: datosDnrpa(leerTramite(t.id)).faltan })
+})
+
+// Enlace de un uso para que el bot tome los datos del servidor.
+api.post('/tramites/:id/dnrpa/enlace', (req, res) => {
+  const t = cargarTramite(req, res)
+  if (!t) return
+  if (!tipoDe(t.tipo)?.vendedor) return res.status(400).json({ error: 'La Transferencia Digital es para transferencias' })
+  if (!esGestor(req.usuario) && t.solicitante_id !== req.usuario.id) {
+    return res.status(403).json({ error: 'Lo puede abrir quien gestiona o quien pidió el trámite' })
+  }
+  limpiarEnlaces()
+  const clave = crypto.randomBytes(24).toString('base64url')
+  enlacesBot.set(clave, { id: t.id, vence: Date.now() + ENLACE_MINUTOS * 60_000 })
+  res.json({ ruta: `/api/dnrpa/datos/${clave}` })
 })
 
 // El bot, para bajarlo una vez en cada PC. Se arma con los archivos de

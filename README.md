@@ -157,14 +157,21 @@ independiente de la zona del contenedor.
 ## Transferencia Digital del DNRPA (bot)
 
 En una transferencia, después de cargar **vendedor** y **comprador** (a mano o
-leyendo el DNI), «**Cargar en el DNRPA**» baja los datos para un bot que
-completa el sitio de la Transferencia Digital
-(<https://www2.jus.gov.ar/dnrpa-site/>).
+leyendo el DNI), «**Cargar en el DNRPA**» → «**Abrir el bot**» abre un bot
+que completa el sitio de la Transferencia Digital
+(<https://www2.jus.gov.ar/dnrpa-site/>) con los datos ya cargados en el
+trámite. No se baja ningún archivo.
 
 - **Corre en la PC, no en el servidor:** abre el Edge de Windows, porque los
   botones y el captcha los aprieta una persona. Es Node + `playwright-core`
   (`bot-dnrpa/`); la app lo entrega como `.zip` (`GET /api/dnrpa/bot.zip`) con
-  un `Cargar DNRPA.cmd` que se abre con doble clic. Ver `bot-dnrpa/LEEME.txt`.
+  un `Cargar DNRPA.cmd`. La primera vez se abre con doble clic: registra el
+  enlace `rivara-dnrpa:` para el usuario de Windows (HKCU, sin
+  administrador). Desde ahí lo abre la app. Ver `bot-dnrpa/LEEME.txt`.
+- **Toma los datos del servidor:** «Abrir el bot» pide un enlace de **un solo
+  uso que vence a los 10 minutos** (`POST /api/tramites/:id/dnrpa/enlace`); el
+  bot lo canjea en `GET /api/dnrpa/datos/:clave`, sin sesión. Las claves viven
+  en memoria: un reinicio las anula.
 - **Solo completa campos.** Nunca aprieta CONFIRMAR, SIGUIENTE, GUARDAR, los
   SÍ/NO de los carteles ni el captcha. Mira la página y, cada vez que cambia
   de pantalla, completa la nueva: dominio y últimos 7 del chasis; vendedor
@@ -175,9 +182,8 @@ completa el sitio de la Transferencia Digital
   («Datos de Cónyuge», «Domicilio Legal»), no por ids internos del sitio.
   Completa cada campo una vez por pantalla: lo que se corrige a mano no lo
   vuelve a pisar.
-- Antes de bajar los datos la app avisa lo que falta (p. ej. el código
-  postal, que el DNI no trae). El `dnrpa-<DOMINIO>.json` tiene datos
-  personales: se borra de Descargas cuando el trámite está presentado.
+- Antes de abrir el bot la app avisa lo que falta (p. ej. el código postal,
+  que el DNI no trae).
 
 ## Usuarios y permisos
 

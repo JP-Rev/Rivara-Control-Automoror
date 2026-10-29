@@ -77,8 +77,8 @@ export async function leerDni(archivo) {
 }
 
 // Transferencia Digital del DNRPA: lo que falta cargar antes de bajar los
-// datos para el bot. Los archivos se bajan con un <a download> directo.
-export const faltanDnrpa = (id) => pedir(`/tramites/${id}/dnrpa?ver=1`)
-export const urlDatosDnrpa = (id) => `/api/tramites/${id}/dnrpa`
+// datos para el bot, y el enlace de un uso con el que el bot los toma.
+export const faltanDnrpa = (id) => pedir(`/tramites/${id}/dnrpa`)
+export const enlaceBotDnrpa = (id) => pedir(`/tramites/${id}/dnrpa/enlace`, { method: 'POST' })
 export const URL_BOT_DNRPA = '/api/dnrpa/bot.zip'
 export const probarAviso = () => pedir('/avisos/prueba', { method: 'POST' })
