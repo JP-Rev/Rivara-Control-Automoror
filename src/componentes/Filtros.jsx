@@ -194,7 +194,7 @@ export function FiltroMarcas({ titulo = 'Más filtros', marcas, onCambio }) {
 export function Resumen({ mostrados, total, hayFiltros, onLimpiar, nombre = 'resultados' }) {
   return (
     <p className="resumen-filtro">
-      {hayFiltros ? `${mostrados} de ${total} ${nombre}` : `${total} ${nombre}`}
+      {hayFiltros ? `${mostrados} de ${total} ${nombre}` : `${total} ${total === 1 ? nombre.replace(/s$/, '') : nombre}`}
       {hayFiltros && <button type="button" className="link" onClick={onLimpiar}>Quitar filtros</button>}
     </p>
   )
