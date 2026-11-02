@@ -65,7 +65,7 @@ export default function TituloDigital({ tramite, puede, onActualizado }) {
       ) : !bajando && (
         <p className="apagado">
           Cuando el trámite queda inscripto el Registro manda la CAT (Constancia de Asignación de Título). Subila y la app entra
-          al DNRPA, carga los tres datos y baja el título.
+          al DNRPA, carga los tres datos, baja el título y da el trámite por terminado.
         </p>
       )}
 

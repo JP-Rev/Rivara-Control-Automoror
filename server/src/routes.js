@@ -855,6 +855,25 @@ api.post('/tramites/:id/titulo', express.raw({ type: 'application/pdf', limit: '
         db.prepare("UPDATE vehiculos SET nro_titulo = ?, actualizado_en = datetime('now') WHERE dominio = ?").run(nuevo.nroTitulo, t.dominio)
       }
       evento(t.id, req.usuario.id, 'TITULO', { texto: `Bajó el título digital del DNRPA${nuevo.nroTitulo ? ` (Nº ${nuevo.nroTitulo})` : ''}` })
+
+      // Con el titulo en la mano el tramite esta hecho: pasa a Terminado, como
+      // si lo moviera quien gestiona (fechas incluidas). El Nº de tramite de
+      // la CAT es el del Registro: se anota si faltaba.
+      const actual = db.prepare('SELECT * FROM tramites WHERE id = ?').get(t.id)
+      if (actual.estado !== 'TERMINADO') {
+        const gestor = actual.gestor_id || (esGestor(req.usuario) ? req.usuario.id : null)
+        db.prepare(`
+          UPDATE tramites SET estado = 'TERMINADO', gestor_id = @gestor,
+            tomado_en = CASE WHEN @gestor IS NULL THEN tomado_en ELSE COALESCE(tomado_en, datetime('now')) END,
+            presentado_en = COALESCE(presentado_en, datetime('now')),
+            terminado_en = COALESCE(terminado_en, datetime('now')),
+            nro_registro = CASE WHEN nro_registro = '' THEN @nro ELSE nro_registro END,
+            actualizado_en = datetime('now')
+          WHERE id = @id
+        `).run({ gestor, nro: nuevo.tramite || '', id: t.id })
+        if (!actual.gestor_id && gestor) evento(t.id, req.usuario.id, 'TOMADO')
+        evento(t.id, req.usuario.id, 'ESTADO', { desde: actual.estado, hasta: 'TERMINADO', texto: 'Terminado al bajar el título digital' })
+      }
     })()
     capturasTitulo.delete(t.id)
     res.json({ tramite: leerTramite(t.id), eventos: eventosDe(t.id) })
