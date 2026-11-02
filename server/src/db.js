@@ -177,6 +177,23 @@ export function migrate() {
   if (!deTramites.has('comprador')) db.exec('ALTER TABLE tramites ADD COLUMN comprador TEXT')
   if (!deTramites.has('transferencia')) db.exec('ALTER TABLE tramites ADD COLUMN transferencia TEXT')
   if (!deTramites.has('vendedor')) db.exec('ALTER TABLE tramites ADD COLUMN vendedor TEXT')
+  // Datos de la CAT (Constancia de Asignacion de Titulo) y de la descarga
+  // del Titulo Digital (JSON).
+  if (!deTramites.has('titulo_digital')) db.exec('ALTER TABLE tramites ADD COLUMN titulo_digital TEXT')
+
+  // PDFs que la app baja por su cuenta (el Titulo Digital). En la base y no
+  // en archivos sueltos: asi entran en el backup de la base.
+  db.exec(`
+    CREATE TABLE IF NOT EXISTS documentos (
+      id         INTEGER PRIMARY KEY AUTOINCREMENT,
+      tramite_id INTEGER NOT NULL REFERENCES tramites(id) ON DELETE CASCADE,
+      tipo       TEXT NOT NULL,
+      nombre     TEXT NOT NULL,
+      datos      BLOB NOT NULL,
+      creado_en  TEXT NOT NULL DEFAULT (datetime('now'))
+    );
+    CREATE INDEX IF NOT EXISTS documentos_tramite ON documentos(tramite_id);
+  `)
 
   // Cambios de datos que se hacen una sola vez (PRAGMA user_version).
   const version = db.pragma('user_version', { simple: true })

@@ -82,3 +82,25 @@ export const faltanDnrpa = (id) => pedir(`/tramites/${id}/dnrpa`)
 export const enlaceBotDnrpa = (id) => pedir(`/tramites/${id}/dnrpa/enlace`, { method: 'POST' })
 export const URL_BOT_DNRPA = '/api/dnrpa/bot.zip'
 export const probarAviso = () => pedir('/avisos/prueba', { method: 'POST' })
+
+// Titulo Digital: la CAT en PDF (o los tres datos a mano, o nada para
+// reintentar) y el servidor lo baja del DNRPA. Tarda: hasta un par de minutos.
+export async function bajarTitulo(id, cat) {
+  const esArchivo = cat instanceof Blob
+  const res = await fetch(`/api/tramites/${id}/titulo`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': esArchivo ? 'application/pdf' : 'application/json' },
+    body: esArchivo ? cat : JSON.stringify(cat || {}),
+  })
+  const cuerpo = await res.json().catch(() => ({}))
+  if (!res.ok) {
+    const error = new Error(cuerpo.error || 'No se pudo bajar el título')
+    error.captura = cuerpo.captura
+    error.tramite = cuerpo.tramite
+    throw error
+  }
+  return cuerpo
+}
+export const urlTitulo = (id, descargar) => `/api/tramites/${id}/titulo.pdf${descargar ? '?descargar=1' : ''}`
+export const urlCapturaTitulo = (id) => `/api/tramites/${id}/titulo/captura.png?t=${Date.now()}`

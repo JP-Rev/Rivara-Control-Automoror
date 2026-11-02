@@ -6,7 +6,7 @@
 // "reposicion de placas", dice "se le cayo la chapa".
 export const TIPOS = [
   {
-    clave: 'TRANSFERENCIA', nombre: 'Transferencia', corto: 'Transferencia', comprador: true, vendedor: true, anexo08d: true,
+    clave: 'TRANSFERENCIA', nombre: 'Transferencia', corto: 'Transferencia', comprador: true, vendedor: true, anexo08d: true, cat: true,
     detalle: 'Cambio de titular por compra o venta',
     palabras: ['08', 'formulario 08', 'cambio de titular', 'titularidad', 'compra', 'venta', 'vender', 'comprador'],
   },
@@ -16,7 +16,7 @@ export const TIPOS = [
     palabras: ['patente', 'patentes', 'chapa', 'chapas', 'placa', 'se cayo', 'perdida'],
   },
   {
-    clave: 'DUPLICADO_TITULO', nombre: 'Duplicado de título', corto: 'Dup. título', motivo: true, ddjj: 'titulo',
+    clave: 'DUPLICADO_TITULO', nombre: 'Duplicado de título', corto: 'Dup. título', motivo: true, ddjj: 'titulo', cat: true,
     detalle: 'Nuevo título del automotor',
     palabras: ['titulo', 'titulo automotor', 'segundo titulo'],
   },

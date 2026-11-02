@@ -188,6 +188,27 @@ trámite. No se baja ningún archivo.
 - Antes de abrir el bot la app avisa lo que falta (p. ej. el código postal,
   que el DNI no trae).
 
+## Título digital desde la CAT
+
+Cuando una transferencia o un duplicado de título queda inscripto, el
+Registro manda la **CAT** (Constancia de Asignación de Título). En el trámite,
+«**Subir la CAT**»: la app lee del PDF el Registro Seccional, el Nº de trámite
+y el Nº de control web, y el **servidor** entra al DNRPA con un Chromium sin
+ventana (`#!/consultarTramite`, «Título Digital»), carga los tres datos,
+aprieta BUSCAR y baja el PDF del título (`server/src/titulo.js`).
+
+- El título queda guardado **en la base** (tabla `documentos`, entra en el
+  backup) y se ve o se baja desde el trámite.
+- El Nº del título nuevo (el «elemento Nro. de control» de la CAT) se anota en
+  la flota: es el que vale para ese dominio.
+- Sin el PDF se pueden escribir los tres datos a mano. Si la CAT es de otro
+  dominio, se rechaza.
+- El Nº de control web da acceso al título: en pantalla se muestra tapado.
+- Si falla, se guarda el motivo, se puede **reintentar** y hay una captura de
+  la pantalla donde quedó el sitio (solo en memoria, una hora).
+- El sitio tiene un reCAPTCHA invisible: si alguna vez pide el desafío de
+  imágenes, sin ventana no se puede resolver y la app lo avisa.
+
 ## Usuarios y permisos
 
 Igual que el resto de las apps de la intranet:
@@ -223,6 +244,7 @@ Todas en el `.env` al lado del compose. Ver `.env.example`.
 | `DNRPA_EMAIL`, `DNRPA_TELEFONO` | no | Contacto que el bot carga en la Transferencia Digital (por defecto jreale@rivara.com.ar · 2346472000) |
 | `SMTP_HABILITADO`, `SMTP_SERVER`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | no | Aviso por mail media hora antes de cada transferencia (mismos nombres que Informar CPE). Se prueba desde Usuarios → «Probar aviso por mail» |
 | `AVISO_TRANSFERENCIA_PARA` | no | A quién va el aviso (por defecto jreale@rivara.com.ar) |
+| `CHROMIUM_PATH` | no | Chromium para bajar el título digital (la imagen ya lo trae en `/usr/bin/chromium`) |
 | `AUTOMOTOR_ADMIN_EMAIL`, `AUTOMOTOR_ADMIN_PASSWORD` | no | Usuario de emergencia |
 
 > **Seguridad:** la contraseña de Windows queda escrita en el `.env` del

@@ -3,6 +3,7 @@ import * as api from '../api.js'
 import { EstadoChip } from '../componentes/Estado.jsx'
 import Dnrpa from './Dnrpa.jsx'
 import Persona from './Persona.jsx'
+import TituloDigital from './TituloDigital.jsx'
 import SiNo, { VOLUNTAD_DE_PAGO } from '../componentes/SiNo.jsx'
 import { resumenVehiculo } from '../componentes/DominioInput.jsx'
 import Modal from '../componentes/Modal.jsx'
@@ -25,6 +26,7 @@ const ACCIONES_EVENTO = {
   NOTA: 'dejó una nota',
   EDITADO: 'lo editó',
   DDJJ: 'generó la DDJJ de extravío',
+  TITULO: 'bajó el título digital',
 }
 
 export default function DetalleTramite({ id, catalogo, usuario, onCambio, onBorrado, onCerrar, onVehiculo, onDdjj, onAnexo08d }) {
@@ -305,6 +307,15 @@ export default function DetalleTramite({ id, catalogo, usuario, onCambio, onBorr
             </div>
             <p className="apagado">Un bot completa los campos del sitio del DNRPA con el vendedor, el comprador y el vehículo. Los botones y el captcha, vos.</p>
           </section>
+        )}
+
+        {/* ---- Titulo digital: con la CAT, el servidor lo baja del DNRPA ---- */}
+        {def?.cat && (
+          <TituloDigital tramite={t} puede={puedeCargarComprador}
+                         onActualizado={(r) => {
+                           setDatos((d) => ({ ...d, ...r }))
+                           onCambio(r.tramite)
+                         }} />
         )}
 
         {/* ---- DDJJ ---- */}

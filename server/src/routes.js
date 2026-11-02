@@ -19,6 +19,8 @@ import { extraerTexto, extraerTextosTarjeta, interpretar } from './documentos.js
 import { interpretarDni, partirDomicilio } from './dni.js'
 import { CONTACTO_DNRPA, datosDnrpa } from './dnrpa.js'
 import { armarZip } from './zip.js'
+import { datosCatCompletos, interpretarCat, limpiarDatosCat } from './cat.js'
+import { ErrorTitulo, descargarTitulo } from './titulo.js'
 import { enviarMail, estadoAvisos } from './avisos.js'
 import { CAMPOS_PLANILLA, estadoSincronizacion, sincronizar } from './sincronizar.js'
 
@@ -365,6 +367,9 @@ function conDomicilioPartido(c) {
   return { ...c, ...Object.fromEntries(Object.entries(partes).filter(([k, v]) => v && !c[k])) }
 }
 
+// El Nro. de Control Web da acceso al titulo: a la pantalla va tapado.
+const tituloPublico = (d) => ({ ...d, control: d.control ? `••••${d.control.slice(-4)}` : '' })
+
 function tramitePublico(t, vehiculos) {
   const v = t.v_id ? vehiculos.get(t.v_id) : null
   return {
@@ -387,6 +392,7 @@ function tramitePublico(t, vehiculos) {
     ddjj: t.ddjj ? JSON.parse(t.ddjj) : null,
     comprador: t.comprador ? conDomicilioPartido(JSON.parse(t.comprador)) : null,
     vendedor: t.vendedor ? JSON.parse(t.vendedor) : null,
+    tituloDigital: t.titulo_digital ? tituloPublico(JSON.parse(t.titulo_digital)) : null,
     transferencia: t.transferencia ? JSON.parse(t.transferencia) : null,
     vehiculo: v ? vehiculoPublico(v) : null,
   }
@@ -793,6 +799,92 @@ api.post('/avisos/prueba', requireAdmin, async (_req, res) => {
   } catch (e) {
     res.status(502).json({ error: `No se pudo mandar: ${e.message}` })
   }
+})
+
+/* ---------------------- Titulo Digital (con la CAT) ---------------------- */
+
+// Ultima captura de pantalla de una descarga fallida, por tramite: sirve
+// para ver donde quedo el sitio. Solo en memoria (tiene datos personales).
+const capturasTitulo = new Map() // id -> { png, vence }
+
+// Recibe la CAT en PDF (cuerpo crudo) o los tres datos a mano (JSON), o nada
+// para reintentar con lo ya guardado; los guarda y baja el titulo del DNRPA.
+api.post('/tramites/:id/titulo', express.raw({ type: 'application/pdf', limit: '5mb' }), express.json(), async (req, res) => {
+  const t = cargarTramite(req, res)
+  if (!t) return
+  if (!tipoDe(t.tipo)?.cat) return res.status(400).json({ error: 'El título digital es para transferencias y duplicados de título' })
+  if (!esGestor(req.usuario) && t.solicitante_id !== req.usuario.id) {
+    return res.status(403).json({ error: 'Lo puede bajar quien gestiona o quien pidió el trámite' })
+  }
+  const previo = t.titulo_digital ? JSON.parse(t.titulo_digital) : {}
+  let nuevo = { ...previo }
+
+  if (Buffer.isBuffer(req.body)) {
+    if (!formatoArchivo(req.body) || formatoArchivo(req.body) !== 'pdf') return res.status(400).json({ error: 'La CAT tiene que ser el PDF que manda el Registro' })
+    const { texto } = await extraerTexto(req.body).catch(() => ({ texto: '' }))
+    const cat = interpretarCat(texto)
+    if (!cat.esCat || !datosCatCompletos(cat)) {
+      return res.status(400).json({ error: 'No parece una CAT (Constancia de Asignación de Título): no se encontraron Registro, Nº de trámite y Nº de control web.' })
+    }
+    if (cat.dominio && cat.dominio !== t.dominio) {
+      return res.status(400).json({ error: `La CAT es del dominio ${cat.dominio} y el trámite es de ${t.dominio}.` })
+    }
+    nuevo = { ...nuevo, ...limpiarDatosCat(cat), dominio: cat.dominio, nroTitulo: cat.nroTitulo, fechaCat: cat.fecha }
+  } else if (req.body && Object.keys(req.body).length) {
+    const manual = limpiarDatosCat(req.body)
+    // El control llega tapado si no se cambio: se queda el guardado.
+    if (!manual.control && previo.control) manual.control = previo.control
+    nuevo = { ...nuevo, ...manual }
+  }
+  if (!datosCatCompletos(nuevo)) return res.status(400).json({ error: 'Faltan datos de la CAT: Registro Seccional, Nº de trámite y Nº de control web.' })
+
+  // Los datos quedan guardados aunque la descarga falle: se puede reintentar.
+  const guardar = (d) => db.prepare("UPDATE tramites SET titulo_digital = ?, actualizado_en = datetime('now') WHERE id = ?").run(JSON.stringify(d), t.id)
+  guardar({ ...nuevo, error: '' })
+
+  try {
+    const pdf = await descargarTitulo(nuevo, { log: (x) => console.log(`Título ${t.dominio}: ${x}`) })
+    db.transaction(() => {
+      db.prepare("DELETE FROM documentos WHERE tramite_id = ? AND tipo = 'TITULO'").run(t.id)
+      const doc = db.prepare("INSERT INTO documentos (tramite_id, tipo, nombre, datos) VALUES (?, 'TITULO', ?, ?)")
+        .run(t.id, `Titulo-${t.dominio}.pdf`, pdf)
+      guardar({ ...nuevo, error: '', documento: doc.lastInsertRowid, descargadoEn: new Date().toISOString() })
+      // El numero del titulo nuevo es el que vale para el dominio de ahora en
+      // mas (el anterior queda anulado): se anota en la flota.
+      if (nuevo.nroTitulo) {
+        db.prepare("UPDATE vehiculos SET nro_titulo = ?, actualizado_en = datetime('now') WHERE dominio = ?").run(nuevo.nroTitulo, t.dominio)
+      }
+      evento(t.id, req.usuario.id, 'TITULO', { texto: `Bajó el título digital del DNRPA${nuevo.nroTitulo ? ` (Nº ${nuevo.nroTitulo})` : ''}` })
+    })()
+    capturasTitulo.delete(t.id)
+    res.json({ tramite: leerTramite(t.id), eventos: eventosDe(t.id) })
+  } catch (e) {
+    const mensaje = e instanceof ErrorTitulo ? e.message : `No se pudo bajar el título: ${e.message}`
+    guardar({ ...nuevo, error: mensaje })
+    if (e.captura) capturasTitulo.set(t.id, { png: e.captura, vence: Date.now() + 60 * 60_000 })
+    res.status(502).json({ error: mensaje, captura: Boolean(e.captura), tramite: leerTramite(t.id) })
+  }
+})
+
+api.get('/tramites/:id/titulo.pdf', (req, res) => {
+  const t = cargarTramite(req, res)
+  if (!t) return
+  const doc = db.prepare("SELECT nombre, datos FROM documentos WHERE tramite_id = ? AND tipo = 'TITULO' ORDER BY id DESC LIMIT 1").get(t.id)
+  if (!doc) return res.status(404).json({ error: 'Todavía no se bajó el título de este trámite' })
+  res.set('Content-Type', 'application/pdf')
+  res.set('Cache-Control', 'no-store')
+  res.set('Content-Disposition', `${req.query.descargar ? 'attachment' : 'inline'}; filename="${doc.nombre}"`)
+  res.send(doc.datos)
+})
+
+api.get('/tramites/:id/titulo/captura.png', (req, res) => {
+  const t = cargarTramite(req, res)
+  if (!t) return
+  const c = capturasTitulo.get(t.id)
+  if (!c || c.vence < Date.now()) return res.status(404).json({ error: 'No hay captura (dura una hora)' })
+  res.set('Content-Type', 'image/png')
+  res.set('Cache-Control', 'no-store')
+  res.send(c.png)
 })
 
 // Anexo 08 D de una transferencia. Recibe lo que se ve en el formulario,

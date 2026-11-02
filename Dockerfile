@@ -28,10 +28,14 @@ ENV NODE_ENV=production
 # poppler-utils, tesseract-ocr(-spa), imagemagick: leer cedulas y titulos
 #   (server/src/documentos.js). pdftotext para el titulo digital, Tesseract en
 #   castellano para las fotos, ImageMagick para prepararlas. Todo local.
+# chromium: navegador sin ventana para bajar el Titulo Digital del DNRPA con
+#   los datos de la CAT (server/src/titulo.js).
 RUN apt-get update \
  && apt-get install -y --no-install-recommends smbclient sqlite3 \
       poppler-utils tesseract-ocr tesseract-ocr-spa imagemagick \
+      chromium fonts-liberation \
  && rm -rf /var/lib/apt/lists/*
+ENV CHROMIUM_PATH=/usr/bin/chromium
 
 COPY --from=deps /app/node_modules ./server/node_modules
 COPY server/package.json ./server/package.json
