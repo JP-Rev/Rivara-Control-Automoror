@@ -2,6 +2,7 @@ import { useCallback, useEffect, useState } from 'react'
 import * as api from '../api.js'
 import { EstadoChip } from '../componentes/Estado.jsx'
 import Dnrpa from './Dnrpa.jsx'
+import Documentos from '../componentes/Documentos.jsx'
 import Persona from './Persona.jsx'
 import TituloDigital from './TituloDigital.jsx'
 import SiNo, { VOLUNTAD_DE_PAGO } from '../componentes/SiNo.jsx'
@@ -431,6 +432,15 @@ export default function DetalleTramite({ id, catalogo, usuario, onCambio, onBorr
                 <button type="button" className="boton boton-suave" onClick={() => setEditando(false)}>Cancelar</button>
               </div>
             </form>
+          </section>
+        )}
+
+        {/* ---- Documentos guardados (titulo, CAT, DDJJ, Anexo 08 D) ---- */}
+        {(def?.cat || def?.ddjj || def?.anexo08d) && (
+          <section className="detalle-bloque">
+            <h4 className="rv-eyebrow">Documentos</h4>
+            <Documentos key={`${t.id}-${eventos.length}`} cargar={() => api.documentosDeTramite(t.id)}
+                        vacio="Todavía no hay documentos: quedan acá el título, la CAT y cada DDJJ o Anexo 08 D que se imprima." />
           </section>
         )}
 

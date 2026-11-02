@@ -1,4 +1,5 @@
 import { useState } from 'react'
+import Documentos from '../componentes/Documentos.jsx'
 import * as api from '../api.js'
 import { EstadoChip } from '../componentes/Estado.jsx'
 import Modal from '../componentes/Modal.jsx'
@@ -174,6 +175,15 @@ export default function Vehiculo({ vehiculo, catalogo, usuario, tramites, onGuar
               ))}
             </ul>
           )}
+        </section>
+      )}
+
+      {!nuevo && (
+        <section className="detalle-bloque detalle-bloque--separado">
+          <h4 className="rv-eyebrow">Documentos de este dominio</h4>
+          <Documentos key={`${vehiculo.id}-${delDominio.length}`} conTramite onAbrirTramite={onAbrirTramite}
+                      cargar={() => api.documentosDeVehiculo(vehiculo.id)}
+                      vacio="Todavía no hay documentos: quedan acá los títulos, CAT, DDJJ y Anexos 08 D de sus trámites." />
         </section>
       )}
     </Modal>

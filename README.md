@@ -188,6 +188,21 @@ trámite. No se baja ningún archivo.
 - Antes de abrir el bot la app avisa lo que falta (p. ej. el código postal,
   que el DNI no trae).
 
+## Documentos guardados
+
+Quedan en la base (tabla `documentos`, entran en el backup), con fecha y
+quién los generó o subió:
+
+- el **título digital** bajado del DNRPA y la **CAT** de la que salieron los
+  datos;
+- cada **DDJJ de extravío** y cada **Anexo 08 D**, tal como se imprimieron.
+
+Se ven en el trámite («Documentos») y en la **ficha del vehículo**
+(«Documentos de este dominio»: los de todos sus trámites, con el último título
+destacado arriba). La CAT trae el Nº de control web, que da acceso al título:
+la ve quien gestiona o quien pidió el trámite. Las fotos y PDF de DNI,
+cédula o título que solo se leen no se guardan.
+
 ## Título digital desde la CAT
 
 Cuando una transferencia o un duplicado de título queda inscripto, el

@@ -194,6 +194,9 @@ export function migrate() {
     );
     CREATE INDEX IF NOT EXISTS documentos_tramite ON documentos(tramite_id);
   `)
+  // Quien lo genero o lo subio.
+  const deDocumentos = new Set(db.prepare('PRAGMA table_info(documentos)').all().map((c) => c.name))
+  if (!deDocumentos.has('usuario_id')) db.exec('ALTER TABLE documentos ADD COLUMN usuario_id TEXT REFERENCES usuarios(id) ON DELETE SET NULL')
 
   // Cambios de datos que se hacen una sola vez (PRAGMA user_version).
   const version = db.pragma('user_version', { simple: true })

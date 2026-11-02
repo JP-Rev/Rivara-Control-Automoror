@@ -739,6 +739,8 @@ api.post('/tramites/:id/ddjj', (req, res) => {
   })()
 
   generarDDJJ(datos).then((pdf) => {
+    // Cada impresion queda guardada tal cual salio.
+    guardarDocumento(t.id, 'DDJJ', `DDJJ-extravio-${t.dominio}.pdf`, Buffer.from(pdf), req.usuario.id)
     res.set('Content-Type', 'application/pdf')
     res.set('Content-Disposition', `inline; filename="DDJJ-extravio-${t.dominio}.pdf"`)
     res.send(Buffer.from(pdf))
@@ -801,6 +803,59 @@ api.post('/avisos/prueba', requireAdmin, async (_req, res) => {
   }
 })
 
+/* ------------------------------ documentos ------------------------------ */
+
+// PDFs guardados en la base: el titulo bajado del DNRPA, la CAT y cada DDJJ
+// y Anexo 08 D tal como se imprimieron. Se ven desde el tramite y desde la
+// ficha del vehiculo (todos los de ese dominio).
+const TIPOS_DOCUMENTO = { TITULO: 'Título digital', CAT: 'CAT', DDJJ: 'DDJJ de extravío', ANEXO_08D: 'Anexo 08 D' }
+
+function guardarDocumento(tramiteId, tipo, nombre, datos, usuarioId) {
+  return db.prepare('INSERT INTO documentos (tramite_id, tipo, nombre, datos, usuario_id) VALUES (?, ?, ?, ?, ?)')
+    .run(tramiteId, tipo, nombre, datos, usuarioId || null).lastInsertRowid
+}
+
+const SELECT_DOCUMENTO = `
+  SELECT d.id, d.tramite_id, d.tipo, d.nombre, d.creado_en, length(d.datos) AS bytes,
+         t.dominio, t.tipo AS tramite_tipo, t.solicitante_id, u.nombre AS usuario_nombre, u.email AS usuario_email
+    FROM documentos d
+    JOIN tramites t ON t.id = d.tramite_id
+    LEFT JOIN usuarios u ON u.id = d.usuario_id
+`
+const documentoPublico = (d) => ({
+  id: d.id, tramite: d.tramite_id, tramiteTipo: d.tramite_tipo, dominio: d.dominio,
+  tipo: d.tipo, tipoNombre: TIPOS_DOCUMENTO[d.tipo] || d.tipo, nombre: d.nombre,
+  creadoEn: d.creado_en, bytes: d.bytes, usuario: d.usuario_nombre || d.usuario_email || '',
+})
+
+// La CAT trae el Nº de control web, que da acceso al titulo: la ve quien
+// gestiona o quien pidio el tramite.
+const puedeVerDocumento = (u, d) => d.tipo !== 'CAT' || esGestor(u) || d.solicitante_id === u.id
+
+api.get('/tramites/:id/documentos', (req, res) => {
+  const t = cargarTramite(req, res)
+  if (!t) return
+  const docs = db.prepare(`${SELECT_DOCUMENTO} WHERE d.tramite_id = ? ORDER BY d.creado_en DESC, d.id DESC`).all(t.id)
+  res.json({ documentos: docs.filter((d) => puedeVerDocumento(req.usuario, d)).map(documentoPublico) })
+})
+
+api.get('/vehiculos/:id/documentos', (req, res) => {
+  const v = db.prepare('SELECT dominio FROM vehiculos WHERE id = ?').get(req.params.id)
+  if (!v) return res.status(404).json({ error: 'No existe ese vehículo' })
+  const docs = db.prepare(`${SELECT_DOCUMENTO} WHERE t.dominio = ? ORDER BY d.creado_en DESC, d.id DESC`).all(v.dominio)
+  res.json({ documentos: docs.filter((d) => puedeVerDocumento(req.usuario, d)).map(documentoPublico) })
+})
+
+api.get('/documentos/:id', (req, res) => {
+  const d = db.prepare(`${SELECT_DOCUMENTO.replace('length(d.datos) AS bytes', 'd.datos')} WHERE d.id = ?`).get(req.params.id)
+  if (!d) return res.status(404).json({ error: 'No existe ese documento' })
+  if (!puedeVerDocumento(req.usuario, d)) return res.status(403).json({ error: 'La CAT la ve quien gestiona o quien pidió el trámite' })
+  res.set('Content-Type', 'application/pdf')
+  res.set('Cache-Control', 'no-store')
+  res.set('Content-Disposition', `${req.query.descargar ? 'attachment' : 'inline'}; filename="${d.nombre}"`)
+  res.send(d.datos)
+})
+
 /* ---------------------- Titulo Digital (con la CAT) ---------------------- */
 
 // Ultima captura de pantalla de una descarga fallida, por tramite: sirve
@@ -830,6 +885,11 @@ api.post('/tramites/:id/titulo', express.raw({ type: 'application/pdf', limit: '
       return res.status(400).json({ error: `La CAT es del dominio ${cat.dominio} y el trámite es de ${t.dominio}.` })
     }
     nuevo = { ...nuevo, ...limpiarDatosCat(cat), dominio: cat.dominio, nroTitulo: cat.nroTitulo, fechaCat: cat.fecha }
+    // La CAT queda como respaldo de donde salieron los datos (la ultima).
+    db.transaction(() => {
+      db.prepare("DELETE FROM documentos WHERE tramite_id = ? AND tipo = 'CAT'").run(t.id)
+      guardarDocumento(t.id, 'CAT', `CAT-${t.dominio}${cat.tramite ? `-${cat.tramite}` : ''}.pdf`, req.body, req.usuario.id)
+    })()
   } else if (req.body && Object.keys(req.body).length) {
     const manual = limpiarDatosCat(req.body)
     // El control llega tapado si no se cambio: se queda el guardado.
@@ -846,9 +906,8 @@ api.post('/tramites/:id/titulo', express.raw({ type: 'application/pdf', limit: '
     const pdf = await descargarTitulo(nuevo, { log: (x) => console.log(`Título ${t.dominio}: ${x}`) })
     db.transaction(() => {
       db.prepare("DELETE FROM documentos WHERE tramite_id = ? AND tipo = 'TITULO'").run(t.id)
-      const doc = db.prepare("INSERT INTO documentos (tramite_id, tipo, nombre, datos) VALUES (?, 'TITULO', ?, ?)")
-        .run(t.id, `Titulo-${t.dominio}.pdf`, pdf)
-      guardar({ ...nuevo, error: '', documento: doc.lastInsertRowid, descargadoEn: new Date().toISOString() })
+      const doc = guardarDocumento(t.id, 'TITULO', `Titulo-${t.dominio}${nuevo.nroTitulo ? `-${nuevo.nroTitulo}` : ''}.pdf`, pdf, req.usuario.id)
+      guardar({ ...nuevo, error: '', documento: doc, descargadoEn: new Date().toISOString() })
       // El numero del titulo nuevo es el que vale para el dominio de ahora en
       // mas (el anterior queda anulado): se anota en la flota.
       if (nuevo.nroTitulo) {
@@ -965,6 +1024,7 @@ api.post('/tramites/:id/anexo08d', async (req, res) => {
 
   try {
     const pdf = await generarAnexo08D(datos)
+    guardarDocumento(t.id, 'ANEXO_08D', `Anexo-08D-${t.dominio}.pdf`, Buffer.from(pdf), req.usuario.id)
     res.set('Content-Type', 'application/pdf')
     res.set('Content-Disposition', `inline; filename="Anexo-08D-${t.dominio}.pdf"`)
     res.send(Buffer.from(pdf))

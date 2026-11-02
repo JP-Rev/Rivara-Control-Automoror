@@ -104,3 +104,8 @@ export async function bajarTitulo(id, cat) {
 }
 export const urlTitulo = (id, descargar) => `/api/tramites/${id}/titulo.pdf${descargar ? '?descargar=1' : ''}`
 export const urlCapturaTitulo = (id) => `/api/tramites/${id}/titulo/captura.png?t=${Date.now()}`
+
+// Documentos guardados (titulo, CAT, DDJJ, Anexo 08 D).
+export const documentosDeTramite = (id) => pedir(`/tramites/${id}/documentos`)
+export const documentosDeVehiculo = (id) => pedir(`/vehiculos/${id}/documentos`)
+export const urlDocumento = (id, descargar) => `/api/documentos/${id}${descargar ? '?descargar=1' : ''}`

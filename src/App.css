@@ -1075,3 +1075,11 @@ input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; a
 .titulo-listo { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 10px 16px; padding: 12px 14px; border-radius: var(--rv-r-sm); background: var(--rv-tint); }
 .titulo-listo p { margin: 0; font-size: 14.5px; }
 .titulo-a-mano { padding: 12px 14px; border-radius: var(--rv-r-sm); background: var(--rv-bg); }
+
+/* ---- Documentos guardados ---- */
+.documentos { list-style: none; margin: 8px 0 0; padding: 0; display: flex; flex-direction: column; gap: 6px; }
+.documentos li { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 12px; padding: 8px 10px; border-radius: var(--rv-r-sm); background: var(--rv-bg); font-size: 13.5px; }
+.documento-tipo { min-width: 120px; font-weight: 700; color: var(--rv-texto); }
+.documento-tipo--titulo { color: var(--rv-verde-osc); }
+.documento-dato { flex: 1; min-width: 180px; color: var(--rv-texto-3); }
+.documentos .fila-acciones { gap: 6px; }
