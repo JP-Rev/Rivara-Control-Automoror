@@ -113,8 +113,10 @@ export function FiltroOpciones({ titulo, opciones, valor, conteos, onCambio, tod
               const esta = valor === o.clave
               return (
                 <li key={o.clave}>
+                  {/* Sin resultados se deshabilita, salvo la opcion por defecto: si
+                      no, con 0 abiertos no habria como volver a "Abiertos". */}
                   <button type="button" role="option" aria-selected={esta} className={esta ? 'elegida' : ''}
-                          disabled={!n && !esta} onClick={() => { onCambio(o.clave); cerrar() }}>
+                          disabled={!n && !esta && o.clave !== porDefecto} onClick={() => { onCambio(o.clave); cerrar() }}>
                     <span>{o.nombre}</span><span className="filtro-n">{n}</span>
                   </button>
                 </li>
