@@ -805,27 +805,39 @@ api.post('/avisos/prueba', requireAdmin, async (_req, res) => {
 
 /* ------------------------------ documentos ------------------------------ */
 
-// PDFs guardados en la base: el titulo bajado del DNRPA, la CAT y cada DDJJ
-// y Anexo 08 D tal como se imprimieron. Se ven desde el tramite y desde la
-// ficha del vehiculo (todos los de ese dominio).
-const TIPOS_DOCUMENTO = { TITULO: 'Título digital', CAT: 'CAT', DDJJ: 'DDJJ de extravío', ANEXO_08D: 'Anexo 08 D' }
+// Archivos guardados en la base: el titulo bajado del DNRPA, la CAT, cada
+// DDJJ y Anexo 08 D tal como se imprimieron, y los adjuntos que sube la gente
+// (en cualquier estado del tramite, tambien terminado). Se ven desde el
+// tramite y desde la ficha del vehiculo (todos los de ese dominio).
+const TIPOS_DOCUMENTO = { TITULO: 'Título digital', CAT: 'CAT', DDJJ: 'DDJJ de extravío', ANEXO_08D: 'Anexo 08 D', ADJUNTO: 'Adjunto' }
 
-function guardarDocumento(tramiteId, tipo, nombre, datos, usuarioId) {
-  return db.prepare('INSERT INTO documentos (tramite_id, tipo, nombre, datos, usuario_id) VALUES (?, ?, ?, ?, ?)')
-    .run(tramiteId, tipo, nombre, datos, usuarioId || null).lastInsertRowid
+function guardarDocumento(tramiteId, tipo, nombre, datos, usuarioId, mime = 'application/pdf') {
+  return db.prepare('INSERT INTO documentos (tramite_id, tipo, nombre, datos, usuario_id, mime) VALUES (?, ?, ?, ?, ?, ?)')
+    .run(tramiteId, tipo, nombre, datos, usuarioId || null, mime).lastInsertRowid
 }
 
+// Lo que el navegador puede mostrar sin riesgo. Cualquier otra cosa (un
+// .html, un .svg, un Word) se baja: mostrada en la app podria ejecutar codigo.
+const MIME_EN_PANTALLA = new Set(['application/pdf', 'image/png', 'image/jpeg', 'image/webp', 'image/gif'])
+const nombreArchivo = (s) => String(s || '').replace(/[\\/\x00-\x1f"<>|:*?]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 150) || 'archivo'
+
 const SELECT_DOCUMENTO = `
-  SELECT d.id, d.tramite_id, d.tipo, d.nombre, d.creado_en, length(d.datos) AS bytes,
+  SELECT d.id, d.tramite_id, d.tipo, d.nombre, d.mime, d.usuario_id, d.creado_en, length(d.datos) AS bytes,
          t.dominio, t.tipo AS tramite_tipo, t.solicitante_id, u.nombre AS usuario_nombre, u.email AS usuario_email
     FROM documentos d
     JOIN tramites t ON t.id = d.tramite_id
     LEFT JOIN usuarios u ON u.id = d.usuario_id
 `
-const documentoPublico = (d) => ({
+// Un adjunto lo borra quien lo subio o quien gestiona; lo que genera la app
+// (titulo, CAT, DDJJ, Anexo) no se borra.
+const puedeBorrarDocumento = (u, d) => d.tipo === 'ADJUNTO' && (esGestor(u) || d.usuario_id === u.id)
+
+const documentoPublico = (d, u) => ({
   id: d.id, tramite: d.tramite_id, tramiteTipo: d.tramite_tipo, dominio: d.dominio,
-  tipo: d.tipo, tipoNombre: TIPOS_DOCUMENTO[d.tipo] || d.tipo, nombre: d.nombre,
+  tipo: d.tipo, tipoNombre: TIPOS_DOCUMENTO[d.tipo] || d.tipo, nombre: d.nombre, mime: d.mime,
+  enPantalla: MIME_EN_PANTALLA.has(d.mime),
   creadoEn: d.creado_en, bytes: d.bytes, usuario: d.usuario_nombre || d.usuario_email || '',
+  puedeBorrar: puedeBorrarDocumento(u, d),
 })
 
 // La CAT trae el Nº de control web, que da acceso al titulo: la ve quien
@@ -836,23 +848,64 @@ api.get('/tramites/:id/documentos', (req, res) => {
   const t = cargarTramite(req, res)
   if (!t) return
   const docs = db.prepare(`${SELECT_DOCUMENTO} WHERE d.tramite_id = ? ORDER BY d.creado_en DESC, d.id DESC`).all(t.id)
-  res.json({ documentos: docs.filter((d) => puedeVerDocumento(req.usuario, d)).map(documentoPublico) })
+  res.json({ documentos: docs.filter((d) => puedeVerDocumento(req.usuario, d)).map((d) => documentoPublico(d, req.usuario)) })
+})
+
+// Adjuntar un archivo: el archivo crudo en el cuerpo, su nombre en X-Nombre
+// (codificado) y su tipo en Content-Type. Vale en cualquier estado.
+api.post('/tramites/:id/adjuntos', express.raw({ type: () => true, limit: '15mb' }), (req, res) => {
+  const t = cargarTramite(req, res)
+  if (!t) return
+  if (!esGestor(req.usuario) && t.solicitante_id !== req.usuario.id) {
+    return res.status(403).json({ error: 'Adjunta quien gestiona o quien pidió el trámite' })
+  }
+  if (!Buffer.isBuffer(req.body) || !req.body.length) return res.status(400).json({ error: 'No llegó ningún archivo' })
+  let nombre = 'archivo'
+  try { nombre = nombreArchivo(decodeURIComponent(req.get('X-Nombre') || '')) } catch { nombre = nombreArchivo(req.get('X-Nombre')) }
+  const tipoMime = String(req.get('Content-Type') || '').split(';')[0].trim().toLowerCase()
+  const mime = /^[a-z0-9.+-]+\/[a-z0-9.+-]+$/.test(tipoMime) ? tipoMime : 'application/octet-stream'
+  db.transaction(() => {
+    guardarDocumento(t.id, 'ADJUNTO', nombre, req.body, req.usuario.id, mime)
+    evento(t.id, req.usuario.id, 'ADJUNTO', { texto: `Adjuntó «${nombre}»` })
+    tocar(t.id)
+  })()
+  res.status(201).json({ tramite: leerTramite(t.id), eventos: eventosDe(t.id) })
+})
+
+api.delete('/documentos/:id', (req, res) => {
+  const d = db.prepare(`${SELECT_DOCUMENTO} WHERE d.id = ?`).get(req.params.id)
+  if (!d) return res.status(404).json({ error: 'No existe ese documento' })
+  if (!puedeBorrarDocumento(req.usuario, d)) {
+    return res.status(403).json({ error: d.tipo === 'ADJUNTO' ? 'Lo borra quien lo subió o quien gestiona' : 'Los documentos que genera la app no se borran' })
+  }
+  db.transaction(() => {
+    db.prepare('DELETE FROM documentos WHERE id = ?').run(d.id)
+    evento(d.tramite_id, req.usuario.id, 'ADJUNTO', { texto: `Borró el adjunto «${d.nombre}»` })
+    tocar(d.tramite_id)
+  })()
+  res.json({ tramite: leerTramite(d.tramite_id), eventos: eventosDe(d.tramite_id) })
 })
 
 api.get('/vehiculos/:id/documentos', (req, res) => {
   const v = db.prepare('SELECT dominio FROM vehiculos WHERE id = ?').get(req.params.id)
   if (!v) return res.status(404).json({ error: 'No existe ese vehículo' })
   const docs = db.prepare(`${SELECT_DOCUMENTO} WHERE t.dominio = ? ORDER BY d.creado_en DESC, d.id DESC`).all(v.dominio)
-  res.json({ documentos: docs.filter((d) => puedeVerDocumento(req.usuario, d)).map(documentoPublico) })
+  res.json({ documentos: docs.filter((d) => puedeVerDocumento(req.usuario, d)).map((d) => documentoPublico(d, req.usuario)) })
 })
 
 api.get('/documentos/:id', (req, res) => {
   const d = db.prepare(`${SELECT_DOCUMENTO.replace('length(d.datos) AS bytes', 'd.datos')} WHERE d.id = ?`).get(req.params.id)
   if (!d) return res.status(404).json({ error: 'No existe ese documento' })
   if (!puedeVerDocumento(req.usuario, d)) return res.status(403).json({ error: 'La CAT la ve quien gestiona o quien pidió el trámite' })
-  res.set('Content-Type', 'application/pdf')
+  const enPantalla = MIME_EN_PANTALLA.has(d.mime) && !req.query.descargar
+  // Lo que no se muestra en pantalla va como archivo generico: el navegador
+  // solo lo baja, nunca lo interpreta.
+  res.set('Content-Type', MIME_EN_PANTALLA.has(d.mime) ? d.mime : 'application/octet-stream')
+  res.set('X-Content-Type-Options', 'nosniff')
   res.set('Cache-Control', 'no-store')
-  res.set('Content-Disposition', `${req.query.descargar ? 'attachment' : 'inline'}; filename="${d.nombre}"`)
+  // Nombre con tildes: filename* (RFC 5987) y uno ASCII para los viejos.
+  const ascii = d.nombre.normalize('NFD').replace(/[^\x20-\x7e]/g, '').replace(/"/g, '') || 'archivo'
+  res.set('Content-Disposition', `${enPantalla ? 'inline' : 'attachment'}; filename="${ascii}"; filename*=UTF-8''${encodeURIComponent(d.nombre)}`)
   res.send(d.datos)
 })
 

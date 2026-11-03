@@ -109,3 +109,17 @@ export const urlCapturaTitulo = (id) => `/api/tramites/${id}/titulo/captura.png?
 export const documentosDeTramite = (id) => pedir(`/tramites/${id}/documentos`)
 export const documentosDeVehiculo = (id) => pedir(`/vehiculos/${id}/documentos`)
 export const urlDocumento = (id, descargar) => `/api/documentos/${id}${descargar ? '?descargar=1' : ''}`
+
+// Adjunto de un tramite: el archivo crudo, con su nombre en un encabezado.
+export async function adjuntar(id, archivo) {
+  const res = await fetch(`/api/tramites/${id}/adjuntos`, {
+    method: 'POST',
+    credentials: 'same-origin',
+    headers: { 'Content-Type': archivo.type || 'application/octet-stream', 'X-Nombre': encodeURIComponent(archivo.name || 'archivo') },
+    body: archivo,
+  })
+  const cuerpo = await res.json().catch(() => ({}))
+  if (!res.ok) throw new Error(cuerpo.error || 'No se pudo adjuntar el archivo')
+  return cuerpo
+}
+export const borrarDocumento = (id) => pedir(`/documentos/${id}`, { method: 'DELETE' })

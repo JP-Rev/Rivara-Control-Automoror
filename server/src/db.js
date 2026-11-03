@@ -197,6 +197,8 @@ export function migrate() {
   // Quien lo genero o lo subio.
   const deDocumentos = new Set(db.prepare('PRAGMA table_info(documentos)').all().map((c) => c.name))
   if (!deDocumentos.has('usuario_id')) db.exec('ALTER TABLE documentos ADD COLUMN usuario_id TEXT REFERENCES usuarios(id) ON DELETE SET NULL')
+  // Tipo de archivo: los adjuntos pueden ser fotos, planillas, Word...
+  if (!deDocumentos.has('mime')) db.exec("ALTER TABLE documentos ADD COLUMN mime TEXT NOT NULL DEFAULT 'application/pdf'")
 
   // Cambios de datos que se hacen una sola vez (PRAGMA user_version).
   const version = db.pragma('user_version', { simple: true })

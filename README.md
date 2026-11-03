@@ -195,7 +195,13 @@ quién los generó o subió:
 
 - el **título digital** bajado del DNRPA y la **CAT** de la que salieron los
   datos;
-- cada **DDJJ de extravío** y cada **Anexo 08 D**, tal como se imprimieron.
+- cada **DDJJ de extravío** y cada **Anexo 08 D**, tal como se imprimieron;
+- los **adjuntos** que sube la gente (PDF, fotos, planillas… hasta 15 MB cada
+  uno), en **cualquier estado del trámite, también terminado**. Adjunta quien
+  gestiona o quien pidió el trámite; un adjunto lo borra quien lo subió o
+  quien gestiona. Lo que genera la app no se borra. PDF e imágenes se ven en
+  el navegador; cualquier otro tipo solo se baja (por seguridad, nunca se
+  abre dentro de la app).
 
 Se ven en el trámite («Documentos») y en la **ficha del vehículo**
 («Documentos de este dominio»: los de todos sus trámites, con el último título

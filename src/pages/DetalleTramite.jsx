@@ -28,6 +28,7 @@ const ACCIONES_EVENTO = {
   EDITADO: 'lo editó',
   DDJJ: 'generó la DDJJ de extravío',
   TITULO: 'bajó el título digital',
+  ADJUNTO: 'cambió los adjuntos',
 }
 
 export default function DetalleTramite({ id, catalogo, usuario, onCambio, onBorrado, onCerrar, onVehiculo, onDdjj, onAnexo08d }) {
@@ -435,14 +436,15 @@ export default function DetalleTramite({ id, catalogo, usuario, onCambio, onBorr
           </section>
         )}
 
-        {/* ---- Documentos guardados (titulo, CAT, DDJJ, Anexo 08 D) ---- */}
-        {(def?.cat || def?.ddjj || def?.anexo08d) && (
-          <section className="detalle-bloque">
-            <h4 className="rv-eyebrow">Documentos</h4>
-            <Documentos key={`${t.id}-${eventos.length}`} cargar={() => api.documentosDeTramite(t.id)}
-                        vacio="Todavía no hay documentos: quedan acá el título, la CAT y cada DDJJ o Anexo 08 D que se imprima." />
-          </section>
-        )}
+        {/* ---- Documentos: los que guarda la app y los adjuntos (en cualquier
+             estado, tambien terminado) ---- */}
+        <section className="detalle-bloque">
+          <h4 className="rv-eyebrow">Documentos y adjuntos</h4>
+          <Documentos key={`${t.id}-${eventos.length}`} cargar={() => api.documentosDeTramite(t.id)}
+                      tramiteId={t.id} puedeAdjuntar={puedeCargarComprador}
+                      onCambio={(r) => { setDatos(r); onCambio(r.tramite) }}
+                      vacio="Todavía no hay documentos. Quedan acá los adjuntos, y el título, la CAT, las DDJJ y los Anexos 08 D que genere la app." />
+        </section>
 
         {/* ---- Seguimiento ---- */}
         <section className="detalle-bloque">
