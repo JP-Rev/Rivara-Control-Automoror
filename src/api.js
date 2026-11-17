@@ -22,6 +22,7 @@ export const logout = () => pedir('/auth/logout', { method: 'POST' })
 export const definirPassword = (actual, nueva) => pedir('/auth/password', json('POST', { actual, nueva }))
 
 export const catalogo = () => pedir('/catalogo')
+export const normativa = (forzar) => pedir(`/normativa${forzar ? '?forzar=1' : ''}`)
 
 export const vehiculos = () => pedir('/vehiculos')
 export const crearVehiculo = (datos) => pedir('/vehiculos', json('POST', datos))

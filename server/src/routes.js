@@ -19,6 +19,7 @@ import { extraerTexto, extraerTextosTarjeta, interpretar } from './documentos.js
 import { interpretarDni, partirDomicilio } from './dni.js'
 import { CONTACTO_DNRPA, datosDnrpa } from './dnrpa.js'
 import { armarZip } from './zip.js'
+import { obtenerNormativa } from './normativa.js'
 import { datosCatCompletos, interpretarCat, limpiarDatosCat } from './cat.js'
 import { ErrorTitulo, descargarTitulo } from './titulo.js'
 import { enviarMail, estadoAvisos } from './avisos.js'
@@ -343,6 +344,12 @@ api.post('/sincronizar', async (req, res) => {
 })
 
 api.get('/sincronizacion', (_req, res) => res.json({ sincronizacion: estadoSincronizacion() }))
+
+// Normativa (disposiciones y circulares de APROA, por RSS). ?forzar=1 lee el
+// feed ya, sin esperar el cache.
+api.get('/normativa', async (req, res) => {
+  res.json(await obtenerNormativa({ forzar: Boolean(req.query.forzar) }))
+})
 
 /* ----------------------------- tramites ----------------------------- */
 

@@ -1085,3 +1085,14 @@ input[type="search"]::-webkit-search-cancel-button { -webkit-appearance: none; a
 .documentos .fila-acciones { gap: 6px; }
 .documentos-adjuntar { justify-content: flex-start; align-items: center; gap: 8px 12px; }
 .documento-nombre { display: inline-block; max-width: 260px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; vertical-align: bottom; }
+
+/* ---- Normativa (feed de APROA) ---- */
+/* Mismo recuadro que las filas de la bandeja: cada disposicion se distingue
+   sin pasar el mouse. */
+.normativa { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 8px; }
+.normativa-item { display: flex; flex-direction: column; gap: 4px; padding: 12px 14px; border-radius: var(--rv-r-sm); background: var(--rv-bg); color: var(--rv-texto); text-decoration: none; }
+.normativa-item:hover { background: var(--rv-tint); }
+.normativa-cabeza { display: flex; flex-wrap: wrap; align-items: baseline; gap: 6px 10px; }
+.normativa-cabeza strong { font-size: 15px; line-height: 1.35; }
+.normativa-resumen { font-size: 13.5px; color: var(--rv-texto-2); line-height: 1.45; overflow-wrap: anywhere; }
+.normativa-pie { margin-top: 14px; font-size: 12.5px; }

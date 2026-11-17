@@ -188,6 +188,17 @@ trámite. No se baja ningún archivo.
 - Antes de abrir el bot la app avisa lo que falta (p. ej. el código postal,
   que el DNI no trae).
 
+## Normativa
+
+Sección **Normativa** del menú: las disposiciones y circulares de APROA
+(<https://www.aproa.org.ar/disposiciones-y-circulares/>), por el feed RSS
+armado en rss.app (`NORMATIVA_FEED_URL`). El feed lo lee el **servidor**
+(`server/src/normativa.js`) y lo guarda en memoria media hora; «Actualizar»
+lo lee en el momento. Si falla, se sigue mostrando lo último que se leyó.
+Cada disposición se abre en la web de APROA; se puede buscar por número o
+palabra. El menú cuenta las publicadas desde la última vez que se abrió la
+sección en ese navegador, y esas se marcan como «Nueva».
+
 ## Documentos guardados
 
 Quedan en la base (tabla `documentos`, entran en el backup), con fecha y
@@ -266,6 +277,7 @@ Todas en el `.env` al lado del compose. Ver `.env.example`.
 | `SMTP_HABILITADO`, `SMTP_SERVER`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | no | Aviso por mail media hora antes de cada transferencia (mismos nombres que Informar CPE). Se prueba desde Usuarios → «Probar aviso por mail» |
 | `AVISO_TRANSFERENCIA_PARA` | no | A quién va el aviso (por defecto jreale@rivara.com.ar) |
 | `CHROMIUM_PATH` | no | Chromium para bajar el título digital (la imagen ya lo trae en `/usr/bin/chromium`) |
+| `NORMATIVA_FEED_URL`, `NORMATIVA_MINUTOS` | no | Feed RSS de la sección Normativa (por defecto el de APROA en rss.app) y cada cuántos minutos se relee (30) |
 | `AUTOMOTOR_ADMIN_EMAIL`, `AUTOMOTOR_ADMIN_PASSWORD` | no | Usuario de emergencia |
 
 > **Seguridad:** la contraseña de Windows queda escrita en el `.env` del

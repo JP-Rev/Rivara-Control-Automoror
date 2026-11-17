@@ -10,6 +10,7 @@ import DetalleTramite from './pages/DetalleTramite.jsx'
 import Flota from './pages/Flota.jsx'
 import LeerDocumento from './pages/LeerDocumento.jsx'
 import Login from './pages/Login.jsx'
+import Normativa from './pages/Normativa.jsx'
 import NuevoTramite from './pages/NuevoTramite.jsx'
 import Password from './pages/Password.jsx'
 import Usuarios from './pages/Usuarios.jsx'
@@ -19,8 +20,19 @@ import './App.css'
 const TITULOS = {
   bandeja: 'Trámites',
   flota: 'Flota',
+  normativa: 'Normativa',
   usuarios: 'Usuarios',
   password: 'Contraseña de respaldo',
+}
+
+// Marca de "hasta cuando ya vi la normativa", en este navegador. Puede no
+// haber almacenamiento (ventana privada): entonces no se marcan nuevas.
+const MARCA_NORMATIVA = 'automotor.normativaVista'
+function leerMarca(clave) {
+  try { return localStorage.getItem(clave) } catch { return null }
+}
+function guardarMarca(clave, valor) {
+  try { localStorage.setItem(clave, valor) } catch { /* sin almacenamiento */ }
 }
 
 // Cada cuanto se vuelve a pedir la bandeja con la pestaña a la vista: el
@@ -75,6 +87,24 @@ function App() {
   // el foco y el Escape.
   const vehiculoCambio = useRef(false)
 
+  // Normativa (feed de APROA): se lee al entrar para contar las nuevas desde
+  // la ultima vez que se abrio la seccion. Esa marca es de cada navegador.
+  const [normativa, setNormativa] = useState(null)
+  const [leyendoNormativa, setLeyendoNormativa] = useState(false)
+  const [normativaVista, setNormativaVista] = useState(() => leerMarca(MARCA_NORMATIVA))
+  const [normativaAnterior, setNormativaAnterior] = useState(null) // la marca al abrir la seccion
+
+  const cargarNormativa = useCallback(async (forzar = false) => {
+    setLeyendoNormativa(true)
+    try {
+      setNormativa(await api.normativa(forzar))
+    } catch (e) {
+      if (e.status !== 401) setNormativa((n) => ({ items: n?.items || [], error: e.message }))
+    } finally {
+      setLeyendoNormativa(false)
+    }
+  }, [])
+
   const cargarTramites = useCallback(async () => {
     try {
       setTramites((await api.tramites()).tramites)
@@ -127,6 +157,10 @@ function App() {
   }, [usuario, cargarTramites, cargarVehiculos, cargarCatalogo])
 
   useEffect(() => {
+    if (usuario) cargarNormativa()
+  }, [usuario, cargarNormativa])
+
+  useEffect(() => {
     if (!usuario) return
     const id = setInterval(() => { if (document.visibilityState === 'visible') cargarTramites() }, REFRESCO_MS)
     return () => clearInterval(id)
@@ -145,7 +179,18 @@ function App() {
     }
   }, [menuAbierto])
 
-  const ir = (id) => { setVista(id); setMenuAbierto(false) }
+  const ir = (id) => {
+    // Al abrir Normativa se recuerda la marca anterior (para resaltar las
+    // nuevas en esta visita) y se guarda la de ahora.
+    if (id === 'normativa' && vista !== 'normativa') {
+      setNormativaAnterior(normativaVista)
+      const ahora = new Date().toISOString()
+      guardarMarca(MARCA_NORMATIVA, ahora)
+      setNormativaVista(ahora)
+    }
+    setVista(id)
+    setMenuAbierto(false)
+  }
 
   const leerAhora = async () => {
     setLeyendo(true)
@@ -187,6 +232,8 @@ function App() {
   const sinTomar = (tramites || []).filter((t) => t.estado === 'SOLICITADO' && !t.gestor).length
   const faltanDatos = vehiculos.filter((v) => v.faltan.length > 0).length
   const urlPortal = `${window.location.protocol}//${window.location.hostname}:1003/`
+  // Sin marca (primera vez en este navegador) no hay "nuevas": serian todas.
+  const nuevasNormativa = normativaVista ? (normativa?.items || []).filter((it) => it.fecha && it.fecha > normativaVista).length : 0
 
   const MENUS = [
     {
@@ -199,6 +246,11 @@ function App() {
     {
       titulo: 'Vehículos',
       items: [{ id: 'flota', label: 'Flota', icono: 'camion', conteo: vehiculos.length }],
+    },
+    {
+      titulo: 'Consulta',
+      // El numero son las disposiciones nuevas desde la ultima visita.
+      items: [{ id: 'normativa', label: 'Normativa', icono: 'documento', conteo: nuevasNormativa }],
     },
     ...(usuario.esAdmin ? [{ titulo: 'Administración', items: [{ id: 'usuarios', label: 'Usuarios', icono: 'personas' }] }] : []),
   ]
@@ -337,6 +389,10 @@ function App() {
                 <Flota vehiculos={vehiculos} sincronizacion={sincronizacion} catalogo={catalogo} usuario={usuario}
                        onAbrir={setVehiculo} onNuevo={() => setVehiculo({ nuevo: true })}
                        onLeerDocumento={() => setLeerDoc({})} onLeer={leerAhora} leyendo={leyendo} />
+              )}
+              {vista === 'normativa' && (
+                <Normativa datos={normativa} vistaAnterior={normativaAnterior} cargando={leyendoNormativa}
+                           onActualizar={() => cargarNormativa(true)} />
               )}
               {vista === 'usuarios' && usuario.esAdmin && <Usuarios usuario={usuario} />}
               {vista === 'password' && <Password onCerrar={() => setVista('bandeja')} />}
