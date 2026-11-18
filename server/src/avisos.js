@@ -1,19 +1,44 @@
 import nodemailer from 'nodemailer'
 import { db } from './db.js'
+import { ESTADOS, tipoDe } from './catalogo.js'
 
-// Aviso por mail media hora antes de una transferencia: el dia y la hora se
-// preguntan al imprimir el Anexo 08 D (la DDJJ lleva esa fecha).
+// Dos avisos por mail:
+//
+// 1. Media hora antes de una transferencia: el dia y la hora se preguntan al
+//    imprimir el Anexo 08 D (la DDJJ lleva esa fecha). Se manda una vez por
+//    turno: queda anotado en el tramite que turno se aviso, y si se cambia el
+//    dia o la hora se vuelve a avisar. Si el servidor estuvo apagado y el
+//    turno ya paso, no se manda.
+//
+// 2. Recordatorio de un tramite que sigue abierto: a la semana sin ningun
+//    movimiento (ni cambio de estado, ni nota, ni edicion), un mail por
+//    tramite, y otro cada semana mientras siga quieto. El mail no cuenta como
+//    movimiento: solo se anota en tramites.recordado_en, no en el seguimiento.
 //
 // SMTP con los mismos nombres de variables que Informar CPE, asi los valores
 // se copian tal cual. Sin SMTP_HABILITADO=true no se manda nada (y la app lo
 // dice en el formulario).
-//
-// Se revisa cada minuto. Un aviso se manda una vez por turno: queda anotado
-// en el tramite qué turno se aviso, y si se cambia el dia o la hora se vuelve
-// a avisar. Si el servidor estuvo apagado y el turno ya paso, no se manda.
 
 const MINUTOS_ANTES = 30
 const CADA_MS = 60_000
+const DIA_MS = 24 * 60 * 60_000
+// Entre las 8 y las 20 de Argentina: ni de madrugada, ni se pierde el aviso
+// si el servidor estuvo apagado a las 8.
+const DESDE_HORA = 8
+const HASTA_HORA = 20
+
+export const diasRecordatorio = (env = process.env) => Math.max(1, Number(env.RECORDATORIO_DIAS) || 7)
+
+// Argentina es UTC-3 todo el año: asi no depende de la zona del contenedor.
+export const horaArgentina = (d = new Date()) => (d.getUTCHours() + 21) % 24
+
+// "2026-11-05 13:00:00" de SQLite es UTC.
+export function fechaSqlite(v) {
+  if (!v) return null
+  const s = String(v)
+  const d = new Date(/^\d{4}-\d{2}-\d{2} \d{2}:\d{2}:\d{2}$/.test(s) ? `${s.replace(' ', 'T')}Z` : s)
+  return Number.isNaN(d.getTime()) ? null : d
+}
 
 export function configMail(env = process.env) {
   return {
@@ -30,7 +55,12 @@ export function configMail(env = process.env) {
 // Lo que muestra la app: si hay aviso y a quien va. Nada de credenciales.
 export function estadoAvisos() {
   const c = configMail()
-  return { habilitado: c.habilitado && Boolean(c.desde), para: c.para, minutosAntes: MINUTOS_ANTES }
+  return {
+    habilitado: c.habilitado && Boolean(c.desde),
+    para: c.para,
+    minutosAntes: MINUTOS_ANTES,
+    diasRecordatorio: diasRecordatorio(),
+  }
 }
 
 // "2026-11-05" + "10:30" en hora argentina (UTC-3, sin horario de verano),
@@ -49,7 +79,50 @@ export function avisosPendientes(filas, ahora = new Date()) {
   })
 }
 
+/**
+ * Tramites abiertos que hace una semana (o mas) no se mueven y a los que
+ * toca recordar: nunca se recordo, o se recordo hace otra semana, o hubo un
+ * movimiento despues del ultimo recordatorio.
+ * @param filas  tramites con ultimo_movimiento (MAX de sus eventos) y recordado_en
+ */
+export function recordatoriosPendientes(filas, ahora = new Date(), dias = diasRecordatorio()) {
+  const plazo = dias * DIA_MS
+  return filas.filter((t) => {
+    const movimiento = fechaSqlite(t.ultimo_movimiento || t.creado_en)
+    if (!movimiento || ahora - movimiento < plazo) return false
+    const recordado = fechaSqlite(t.recordado_en)
+    // Un movimiento posterior al ultimo recordatorio reinicia la cuenta.
+    if (recordado && recordado > movimiento && ahora - recordado < plazo) return false
+    return true
+  })
+}
+
 const nombre = (p) => (!p ? '' : p.tipo === 'JURIDICA' ? p.razonSocial : [p.apellido, p.nombres].filter(Boolean).join(', '))
+
+const nombreEstado = (c) => ESTADOS.find((e) => e.clave === c)?.nombre || c
+const enDias = (n) => (n === 1 ? '1 día' : `${n} días`)
+
+export function armarRecordatorio(t, ahora = new Date()) {
+  const movimiento = fechaSqlite(t.ultimo_movimiento || t.creado_en)
+  const dias = Math.floor((ahora - movimiento) / DIA_MS)
+  const tipo = tipoDe(t.tipo)?.nombre || t.tipo
+  const estado = t.gestor_id ? nombreEstado(t.estado) : `${nombreEstado(t.estado)}, sin tomar`
+  const url = (process.env.APP_URL || '').trim()
+  const si = (cond, texto) => (cond ? texto : null)
+  const lineas = [
+    `El trámite #${t.id} (${tipo} de ${t.dominio}) sigue abierto y hace ${enDias(dias)} que no se mueve.`,
+    '',
+    `Dominio: ${t.dominio}`,
+    `Trámite: ${tipo}`,
+    `Estado: ${estado}`,
+    si(t.nro_registro, `Nº de trámite del Registro: ${t.nro_registro}`),
+    si(t.solicitante, `Lo pidió: ${t.solicitante}`),
+    si(t.gestor, `Lo gestiona: ${t.gestor}`),
+    '',
+    url ? `Verlo en la app: ${url}` : 'Trámites del Registro Automotor.',
+  ].filter((l) => l !== null)
+  return { asunto: `Pendiente hace ${enDias(dias)}: ${tipo} de ${t.dominio}`, texto: lineas.join('\n') }
+}
 
 function armarMail(t) {
   const tr = JSON.parse(t.transferencia)
@@ -88,9 +161,50 @@ export async function enviarMail({ asunto, texto }, c = configMail()) {
   await transportador(c).sendMail({ from: c.desde, to: c.para.join(', '), subject: asunto, text: texto })
 }
 
+const SELECT_PENDIENTES = `
+  SELECT t.*,
+         s.nombre AS solicitante_nombre, s.email AS solicitante_email,
+         g.nombre AS gestor_nombre, g.email AS gestor_email,
+         (SELECT MAX(e.creado_en) FROM tramite_eventos e WHERE e.tramite_id = t.id) AS ultimo_movimiento
+    FROM tramites t
+    LEFT JOIN usuarios s ON s.id = t.solicitante_id
+    LEFT JOIN usuarios g ON g.id = t.gestor_id
+   WHERE t.estado <> 'TERMINADO'
+`
+
+// Los recordatorios no corren cada minuto como el aviso del turno: nada
+// cambia tan rapido, y si el SMTP esta caido no se reintenta sin parar.
+const CADA_RECORDATORIOS_MS = 15 * 60_000
+let ultimaRevision = 0
+
+async function revisarRecordatorios(c, ahora = new Date()) {
+  if (ahora - ultimaRevision < CADA_RECORDATORIOS_MS) return
+  ultimaRevision = ahora.getTime()
+  const hora = horaArgentina(ahora)
+  if (hora < DESDE_HORA || hora >= HASTA_HORA) return
+  const filas = db.prepare(SELECT_PENDIENTES).all().map((t) => ({
+    ...t,
+    solicitante: t.solicitante_nombre || t.solicitante_email || '',
+    gestor: t.gestor_nombre || t.gestor_email || '',
+  }))
+  for (const t of recordatoriosPendientes(filas, ahora)) {
+    try {
+      await enviarMail(armarRecordatorio(t, ahora), c)
+      // Solo la marca del recordatorio: no toca actualizado_en ni el
+      // seguimiento, para no reiniciar la cuenta de "sin movimiento".
+      db.prepare("UPDATE tramites SET recordado_en = datetime('now') WHERE id = ?").run(t.id)
+      console.log(`Recordatorio enviado: trámite #${t.id} (${t.dominio})`)
+    } catch (e) {
+      // Se reintenta en la vuelta siguiente.
+      console.warn(`No se pudo mandar el recordatorio del trámite #${t.id}: ${e.message}`)
+    }
+  }
+}
+
 async function revisar() {
   const c = configMail()
   if (!c.habilitado || !c.desde || !c.para.length) return
+  await revisarRecordatorios(c)
   const filas = db.prepare("SELECT * FROM tramites WHERE tipo = 'TRANSFERENCIA' AND estado <> 'TERMINADO' AND transferencia IS NOT NULL").all()
   for (const t of avisosPendientes(filas)) {
     try {

@@ -154,6 +154,17 @@ por turno (si se cambia la hora, se vuelve a avisar); si el servidor estaba
 apagado y el turno ya pasó, no se manda. La hora es la de Argentina,
 independiente de la zona del contenedor.
 
+### Recordatorio de los trámites que no se mueven
+
+Un trámite que no está **Terminado** y lleva **7 días sin ningún movimiento**
+(cambio de estado, nota o edición) genera un mail por trámite, con el
+dominio, el trámite, el estado, cuánto lleva y quién lo pidió o lo gestiona.
+Si sigue quieto, se repite cada 7 días. El mail no cuenta como movimiento: se
+anota aparte (`tramites.recordado_en`), no en el seguimiento, así cualquier
+movimiento real reinicia la cuenta. Sale entre las 8 y las 20 (hora de
+Argentina), al mismo destinatario que el aviso de transferencias.
+`RECORDATORIO_DIAS` cambia el plazo y `APP_URL` agrega el enlace a la app.
+
 ## Transferencia Digital del DNRPA (bot)
 
 En una transferencia, después de cargar **vendedor** y **comprador** (a mano o
@@ -276,6 +287,8 @@ Todas en el `.env` al lado del compose. Ver `.env.example`.
 | `DNRPA_EMAIL`, `DNRPA_TELEFONO` | no | Contacto que el bot carga en la Transferencia Digital (por defecto jreale@rivara.com.ar · 2346472000) |
 | `SMTP_HABILITADO`, `SMTP_SERVER`, `SMTP_PORT`, `SMTP_USER`, `SMTP_PASS`, `SMTP_FROM` | no | Aviso por mail media hora antes de cada transferencia (mismos nombres que Informar CPE). Se prueba desde Usuarios → «Probar aviso por mail» |
 | `AVISO_TRANSFERENCIA_PARA` | no | A quién va el aviso (por defecto jreale@rivara.com.ar) |
+| `RECORDATORIO_DIAS` | no | Días sin movimiento antes de recordar un trámite abierto, y entre un recordatorio y el siguiente (7) |
+| `APP_URL` | no | Dirección de la app, para el enlace de los mails |
 | `CHROMIUM_PATH` | no | Chromium para bajar el título digital (la imagen ya lo trae en `/usr/bin/chromium`) |
 | `NORMATIVA_FEED_URL`, `NORMATIVA_MINUTOS` | no | Feed RSS de la sección Normativa (por defecto el de APROA en rss.app) y cada cuántos minutos se relee (30) |
 | `AUTOMOTOR_ADMIN_EMAIL`, `AUTOMOTOR_ADMIN_PASSWORD` | no | Usuario de emergencia |

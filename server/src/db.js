@@ -180,6 +180,9 @@ export function migrate() {
   // Datos de la CAT (Constancia de Asignacion de Titulo) y de la descarga
   // del Titulo Digital (JSON).
   if (!deTramites.has('titulo_digital')) db.exec('ALTER TABLE tramites ADD COLUMN titulo_digital TEXT')
+  // Cuando salio el ultimo mail de "este tramite sigue abierto". No es un
+  // movimiento del tramite: no toca actualizado_en ni el seguimiento.
+  if (!deTramites.has('recordado_en')) db.exec('ALTER TABLE tramites ADD COLUMN recordado_en TEXT')
 
   // PDFs que la app baja por su cuenta (el Titulo Digital). En la base y no
   // en archivos sueltos: asi entran en el backup de la base.

@@ -41,6 +41,8 @@ services:
       SMTP_PASS: ${SMTP_PASS:-}
       SMTP_FROM: ${SMTP_FROM:-}
       AVISO_TRANSFERENCIA_PARA: ${AVISO_TRANSFERENCIA_PARA:-}
+      RECORDATORIO_DIAS: ${RECORDATORIO_DIAS:-7}
+      APP_URL: ${APP_URL:-}
       NORMATIVA_FEED_URL: ${NORMATIVA_FEED_URL:-}
       NORMATIVA_MINUTOS: ${NORMATIVA_MINUTOS:-30}
     # Disco de datos del contrato (§7): el DIRECTORIO, nunca el .db suelto.

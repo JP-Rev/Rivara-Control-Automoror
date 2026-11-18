@@ -73,7 +73,7 @@ export default function Usuarios({ usuario }) {
         </div>
         <div className="fila-acciones">
           <button type="button" className="boton boton-suave boton-chico" disabled={probando} onClick={probarMail}
-                  title="Manda un mail de prueba con la configuración del aviso de transferencias">
+                  title="Manda un mail de prueba con la configuración de los avisos (turno de transferencia y trámites que no se mueven)">
             {probando ? 'Mandando…' : 'Probar aviso por mail'}
           </button>
           <button type="button" className="boton boton-chico" onClick={() => setAlta(true)}>
